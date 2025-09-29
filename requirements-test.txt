@@ -72,7 +72,7 @@ psycopg2-binary>=2.9.0
 redis>=5.0.0
 aioredis>=2.0.0
 pybit>=5.7.0
-pandas-ta>=0.3.14b0
+pandas-ta==0.4.71b0
 streamlit>=1.28.0
 cryptography>=40.0.0
 bcrypt>=4.1.0
