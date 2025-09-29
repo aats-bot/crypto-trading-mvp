@@ -42,7 +42,7 @@ jobs:
         semgrep --config=auto --json --output=semgrep-report.json . || true
         
     - name: Upload relatórios de segurança
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: security-reports
         path: |
@@ -187,7 +187,7 @@ else:
         fi
         
     - name: Upload relatório de licenças
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: license-report
         path: licenses-report.json
@@ -256,7 +256,7 @@ else:
     
     steps:
     - name: Download todos os artefatos
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       
     - name: Gerar relatório consolidado
       run: |
@@ -304,7 +304,7 @@ except:
         cat security-summary.md
         
     - name: Upload relatório consolidado
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: security-summary
         path: security-summary.md

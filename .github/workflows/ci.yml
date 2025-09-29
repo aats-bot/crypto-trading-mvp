@@ -57,7 +57,7 @@ jobs:
       run: safety check --json --output safety-report.json || true
       
     - name: Upload relatórios de segurança
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: security-reports
         path: |
@@ -134,7 +134,7 @@ jobs:
         name: codecov-umbrella
         
     - name: Upload artefatos de teste
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: test-results
         path: |
@@ -233,7 +233,7 @@ jobs:
         
     - name: Upload logs de falha
       if: failure()
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: integration-logs
         path: integration-logs.txt
@@ -269,7 +269,7 @@ jobs:
         python -m pytest tests/performance/ --benchmark-only --benchmark-json=benchmark.json
         
     - name: Upload resultados de performance
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: performance-results
         path: benchmark.json
