@@ -1,0 +1,29 @@
+# Crypto Trading MVP - Worker Dependencies
+# Dependências específicas para o worker assíncrono
+
+# Processamento Assíncrono
+celery==5.3.4
+kombu==5.3.4
+
+# Message Queue e Cache
+redis==5.0.1
+hiredis==2.2.3
+
+# Processamento de Dados
+pandas==2.1.3
+numpy==1.25.2
+scipy==1.11.4
+
+# Trading APIs
+ccxt==4.1.64
+
+# Async Support
+asyncio-mqtt==0.16.1
+aioredis==2.0.1
+
+# Monitoring
+psutil==5.9.6
+
+# Utilities
+python-dateutil==2.8.2
+pytz==2023.3

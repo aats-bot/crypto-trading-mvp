@@ -1,0 +1,234 @@
+2025-08-15 15:13:17,719 - __main__ - INFO - Bot worker initialized
+2025-08-15 15:13:17,719 - __main__ - INFO - Starting bot worker...
+2025-08-15 15:13:17,721 - src.bot.strategies_base - INFO - Initialized SMA strategy: fast=10, slow=20
+2025-08-15 15:13:17,722 - src.bot.risk_manager - INFO - Risk manager initialized with config: {'max_position_size_usd': 500.0, 'max_total_exposure_usd': 5000.0, 'max_leverage': 3.0, 'max_daily_loss_usd': 50.0, 'max_drawdown_pct': 0.1, 'min_account_balance_usd': 100.0, 'position_size_pct': 0.02, 'max_open_positions': 5, 'risk_per_trade_pct': 0.02, 'stop_loss_pct': 0.02, 'correlation_limit': 0.7, 'blacklisted_symbols': [], 'trading_hours': {'start': 0, 'end': 24}}
+2025-08-15 15:13:17,722 - src.bot.trading_bot - INFO - Components initialized for client client_001
+2025-08-15 15:13:17,723 - src.bot.trading_bot - INFO - Trading bot initialized for client client_001
+2025-08-15 15:13:17,723 - __main__ - INFO - Added bot for client client_001
+2025-08-15 15:13:17,728 - src.bot.trading_bot - ERROR - Error initializing components: RSIStrategy.__init__() got an unexpected keyword argument 'rsi_period'
+2025-08-15 15:13:17,729 - __main__ - ERROR - Error adding bot for client client_002: RSIStrategy.__init__() got an unexpected keyword argument 'rsi_period'
+2025-08-15 15:13:17,730 - __main__ - INFO - Bot worker status: 0 active, 0 paused, 1 total bots
+2025-08-15 15:13:17,731 - src.bot.trading_bot - INFO - Starting trading bot for client client_001
+2025-08-15 15:14:17,739 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-15 15:14:56,396 - __main__ - INFO - Bot worker initialized
+2025-08-15 15:14:56,396 - __main__ - INFO - Starting bot worker...
+2025-08-15 15:14:56,399 - src.bot.strategies_base - INFO - Initialized SMA strategy: fast=10, slow=20
+2025-08-15 15:14:56,399 - src.bot.risk_manager - INFO - Risk manager initialized with config: {'max_position_size_usd': 500.0, 'max_total_exposure_usd': 5000.0, 'max_leverage': 3.0, 'max_daily_loss_usd': 50.0, 'max_drawdown_pct': 0.1, 'min_account_balance_usd': 100.0, 'position_size_pct': 0.02, 'max_open_positions': 5, 'risk_per_trade_pct': 0.02, 'stop_loss_pct': 0.02, 'correlation_limit': 0.7, 'blacklisted_symbols': [], 'trading_hours': {'start': 0, 'end': 24}}
+2025-08-15 15:14:56,400 - src.bot.trading_bot - INFO - Components initialized for client client_001
+2025-08-15 15:14:56,400 - src.bot.trading_bot - INFO - Trading bot initialized for client client_001
+2025-08-15 15:14:56,401 - __main__ - INFO - Added bot for client client_001
+2025-08-15 15:14:56,401 - src.bot.trading_bot - ERROR - Error initializing components: RSIStrategy.__init__() got an unexpected keyword argument 'rsi_period'
+2025-08-15 15:14:56,402 - __main__ - ERROR - Error adding bot for client client_002: RSIStrategy.__init__() got an unexpected keyword argument 'rsi_period'
+2025-08-15 15:14:56,402 - __main__ - INFO - Bot worker status: 0 active, 0 paused, 1 total bots
+2025-08-15 15:14:56,403 - src.bot.trading_bot - INFO - Starting trading bot for client client_001
+2025-08-15 15:15:56,403 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-15 15:16:49,144 - __main__ - INFO - Bot worker initialized
+2025-08-15 15:16:49,145 - __main__ - INFO - Starting bot worker...
+2025-08-15 15:16:49,145 - src.bot.strategies_base - INFO - Initialized SMA strategy: fast=10, slow=20
+2025-08-15 15:16:49,146 - src.bot.risk_manager - INFO - Risk manager initialized with config: {'max_position_size_usd': 500.0, 'max_total_exposure_usd': 5000.0, 'max_leverage': 3.0, 'max_daily_loss_usd': 50.0, 'max_drawdown_pct': 0.1, 'min_account_balance_usd': 100.0, 'position_size_pct': 0.02, 'max_open_positions': 5, 'risk_per_trade_pct': 0.02, 'stop_loss_pct': 0.02, 'correlation_limit': 0.7, 'blacklisted_symbols': [], 'trading_hours': {'start': 0, 'end': 24}}
+2025-08-15 15:16:49,146 - src.bot.trading_bot - INFO - Components initialized for client client_001
+2025-08-15 15:16:49,146 - src.bot.trading_bot - INFO - Trading bot initialized for client client_001
+2025-08-15 15:16:49,147 - __main__ - INFO - Added bot for client client_001
+2025-08-15 15:16:49,147 - src.bot.trading_bot - ERROR - Error initializing components: RSIStrategy.__init__() got an unexpected keyword argument 'rsi_period'
+2025-08-15 15:16:49,147 - __main__ - ERROR - Error adding bot for client client_002: RSIStrategy.__init__() got an unexpected keyword argument 'rsi_period'
+2025-08-15 15:16:49,148 - __main__ - INFO - Bot worker status: 0 active, 0 paused, 1 total bots
+2025-08-15 15:16:49,148 - src.bot.trading_bot - INFO - Starting trading bot for client client_001
+2025-08-15 15:16:56,409 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-15 15:17:49,154 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-15 15:17:56,418 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-15 15:18:49,165 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-15 15:18:56,426 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-15 15:19:49,180 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-15 15:19:56,442 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-15 15:20:49,187 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-15 15:20:56,445 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-15 15:21:49,193 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-15 15:21:56,452 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-15 15:22:49,204 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-15 15:22:56,462 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-15 15:23:49,219 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-15 15:23:57,218 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-15 15:24:49,226 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-15 15:24:57,230 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-15 15:25:50,002 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-15 15:25:57,234 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-15 15:26:50,012 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-15 15:26:57,248 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-15 15:27:50,015 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-15 15:27:57,251 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-15 15:28:50,029 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-15 15:28:56,860 - src.bot.strategies_base - ERROR - Error in SMA analysis for BTCUSDT: OrderRequest.__init__() got an unexpected keyword argument 'stop_loss'
+2025-08-15 15:28:58,849 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-15 15:29:42,302 - src.bot.strategies_base - ERROR - Error in SMA analysis for BTCUSDT: OrderRequest.__init__() got an unexpected keyword argument 'stop_loss'
+2025-08-15 15:29:50,044 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-15 15:29:58,857 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-15 15:30:42,645 - __main__ - INFO - Received signal 2, initiating shutdown...
+2025-08-15 15:30:42,646 - __main__ - INFO - Shutting down bot worker...
+2025-08-15 15:30:42,646 - __main__ - INFO - Stopping bot for client client_001
+2025-08-15 15:30:42,646 - src.bot.trading_bot - INFO - Stopping trading bot for client client_001
+2025-08-15 15:30:42,647 - __main__ - INFO - Bot worker shutdown complete
+2025-08-15 15:30:52,551 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-15 15:31:36,369 - __main__ - INFO - Bot worker initialized
+2025-08-15 15:31:36,369 - __main__ - INFO - Starting bot worker...
+2025-08-15 15:31:36,370 - src.bot.strategies_base - INFO - Initialized SMA strategy: fast=10, slow=20
+2025-08-15 15:31:36,370 - src.bot.risk_manager - INFO - Risk manager initialized with config: {'max_position_size_usd': 500.0, 'max_total_exposure_usd': 5000.0, 'max_leverage': 3.0, 'max_daily_loss_usd': 50.0, 'max_drawdown_pct': 0.1, 'min_account_balance_usd': 100.0, 'position_size_pct': 0.02, 'max_open_positions': 5, 'risk_per_trade_pct': 0.02, 'stop_loss_pct': 0.02, 'correlation_limit': 0.7, 'blacklisted_symbols': [], 'trading_hours': {'start': 0, 'end': 24}}
+2025-08-15 15:31:36,371 - src.bot.trading_bot - INFO - Components initialized for client client_001
+2025-08-15 15:31:36,371 - src.bot.trading_bot - INFO - Trading bot initialized for client client_001
+2025-08-15 15:31:36,371 - __main__ - INFO - Added bot for client client_001
+2025-08-15 15:31:36,372 - src.bot.trading_bot - ERROR - Error initializing components: RSIStrategy.__init__() got an unexpected keyword argument 'rsi_period'
+2025-08-15 15:31:36,372 - __main__ - ERROR - Error adding bot for client client_002: RSIStrategy.__init__() got an unexpected keyword argument 'rsi_period'
+2025-08-15 15:31:36,372 - __main__ - INFO - Bot worker status: 0 active, 0 paused, 1 total bots
+2025-08-15 15:31:36,372 - src.bot.trading_bot - INFO - Starting trading bot for client client_001
+2025-08-15 15:31:47,576 - __main__ - INFO - Received signal 2, initiating shutdown...
+2025-08-15 15:31:47,577 - __main__ - INFO - Received signal 2, initiating shutdown...
+2025-08-15 15:31:47,577 - __main__ - INFO - Shutting down bot worker...
+2025-08-15 15:31:47,577 - __main__ - INFO - Shutting down bot worker...
+2025-08-15 15:31:47,577 - __main__ - INFO - Stopping bot for client client_001
+2025-08-15 15:31:47,578 - __main__ - INFO - Stopping bot for client client_001
+2025-08-15 15:31:47,578 - src.bot.trading_bot - INFO - Stopping trading bot for client client_001
+2025-08-15 15:31:47,578 - src.bot.trading_bot - INFO - Stopping trading bot for client client_001
+2025-08-15 15:31:47,578 - __main__ - INFO - Bot worker shutdown complete
+2025-08-15 15:31:47,578 - __main__ - INFO - Bot worker shutdown complete
+2025-08-25 15:43:07,934 - __main__ - INFO - Bot worker initialized
+2025-08-25 15:43:07,935 - __main__ - INFO - Starting bot worker...
+2025-08-25 15:43:07,935 - src.bot.strategies_base - INFO - Initialized SMA strategy: fast=10, slow=20
+2025-08-25 15:43:07,936 - src.bot.risk_manager - INFO - Risk manager initialized with config: {'max_position_size_usd': 500.0, 'max_total_exposure_usd': 5000.0, 'max_leverage': 3.0, 'max_daily_loss_usd': 50.0, 'max_drawdown_pct': 0.1, 'min_account_balance_usd': 100.0, 'position_size_pct': 0.02, 'max_open_positions': 5, 'risk_per_trade_pct': 0.02, 'stop_loss_pct': 0.02, 'correlation_limit': 0.7, 'blacklisted_symbols': [], 'trading_hours': {'start': 0, 'end': 24}}
+2025-08-25 15:43:07,936 - src.bot.trading_bot - INFO - Components initialized for client client_001
+2025-08-25 15:43:07,936 - src.bot.trading_bot - INFO - Trading bot initialized for client client_001
+2025-08-25 15:43:07,937 - __main__ - INFO - Added bot for client client_001
+2025-08-25 15:43:07,937 - src.bot.trading_bot - ERROR - Error initializing components: RSIStrategy.__init__() got an unexpected keyword argument 'rsi_period'
+2025-08-25 15:43:07,937 - __main__ - ERROR - Error adding bot for client client_002: RSIStrategy.__init__() got an unexpected keyword argument 'rsi_period'
+2025-08-25 15:43:07,938 - __main__ - INFO - Bot worker status: 0 active, 0 paused, 1 total bots
+2025-08-25 15:43:07,939 - src.bot.trading_bot - INFO - Starting trading bot for client client_001
+2025-08-25 15:44:07,952 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 15:45:07,955 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 15:46:07,957 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 15:47:07,965 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 15:48:07,968 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 15:49:07,974 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 15:50:07,985 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 15:51:07,997 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 15:52:08,042 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 15:53:08,044 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 15:54:08,054 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 15:55:08,058 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 15:56:08,062 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 15:57:08,073 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 15:58:08,089 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 15:59:08,103 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 15:59:50,423 - src.bot.strategies_base - ERROR - Error in SMA analysis for BTCUSDT: OrderRequest.__init__() got an unexpected keyword argument 'stop_loss'
+2025-08-25 16:00:08,108 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:01:08,118 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:01:30,562 - src.bot.strategies_base - ERROR - Error in SMA analysis for BTCUSDT: OrderRequest.__init__() got an unexpected keyword argument 'stop_loss'
+2025-08-25 16:02:08,121 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:03:10,017 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:04:10,032 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:04:15,447 - src.bot.strategies_base - ERROR - Error in SMA analysis for BTCUSDT: OrderRequest.__init__() got an unexpected keyword argument 'stop_loss'
+2025-08-25 16:04:48,161 - src.bot.strategies_base - ERROR - Error in SMA analysis for BTCUSDT: OrderRequest.__init__() got an unexpected keyword argument 'stop_loss'
+2025-08-25 16:05:10,045 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:06:10,055 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:06:59,759 - src.bot.strategies_base - ERROR - Error in SMA analysis for BTCUSDT: OrderRequest.__init__() got an unexpected keyword argument 'stop_loss'
+2025-08-25 16:07:10,071 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:08:06,504 - src.bot.strategies_base - ERROR - Error in SMA analysis for BTCUSDT: OrderRequest.__init__() got an unexpected keyword argument 'stop_loss'
+2025-08-25 16:08:10,075 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:09:10,089 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:10:10,104 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:11:10,110 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:12:10,114 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:13:10,123 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:14:13,119 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:15:13,124 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:16:13,134 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:17:13,135 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:17:28,689 - src.bot.strategies_base - ERROR - Error in SMA analysis for BTCUSDT: OrderRequest.__init__() got an unexpected keyword argument 'stop_loss'
+2025-08-25 16:18:02,045 - src.bot.strategies_base - ERROR - Error in SMA analysis for BTCUSDT: OrderRequest.__init__() got an unexpected keyword argument 'stop_loss'
+2025-08-25 16:18:13,137 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:19:13,146 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:19:40,299 - src.bot.strategies_base - ERROR - Error in SMA analysis for BTCUSDT: OrderRequest.__init__() got an unexpected keyword argument 'stop_loss'
+2025-08-25 16:20:13,699 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:21:13,702 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:21:17,776 - src.bot.strategies_base - ERROR - Error in SMA analysis for BTCUSDT: OrderRequest.__init__() got an unexpected keyword argument 'stop_loss'
+2025-08-25 16:22:13,717 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:22:57,947 - src.bot.strategies_base - ERROR - Error in SMA analysis for BTCUSDT: OrderRequest.__init__() got an unexpected keyword argument 'stop_loss'
+2025-08-25 16:23:13,728 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:24:13,731 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:25:13,737 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:26:13,739 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:27:13,747 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:28:13,760 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:29:13,763 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:30:05,276 - src.bot.strategies_base - ERROR - Error in SMA analysis for BTCUSDT: OrderRequest.__init__() got an unexpected keyword argument 'stop_loss'
+2025-08-25 16:30:13,776 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:30:38,680 - src.bot.strategies_base - ERROR - Error in SMA analysis for BTCUSDT: OrderRequest.__init__() got an unexpected keyword argument 'stop_loss'
+2025-08-25 16:31:13,786 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:32:13,789 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:33:13,802 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:34:13,816 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:35:13,819 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:36:13,826 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:37:13,832 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:37:15,867 - src.bot.strategies_base - ERROR - Error in SMA analysis for BTCUSDT: OrderRequest.__init__() got an unexpected keyword argument 'stop_loss'
+2025-08-25 16:38:13,846 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:39:13,860 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:40:13,866 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:41:14,295 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:42:14,303 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:43:14,308 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:43:25,205 - src.bot.strategies_base - ERROR - Error in SMA analysis for BTCUSDT: OrderRequest.__init__() got an unexpected keyword argument 'stop_loss'
+2025-08-25 16:44:14,321 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:45:14,328 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:46:14,387 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:47:14,396 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:48:14,399 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:48:58,075 - src.bot.strategies_base - ERROR - Error in SMA analysis for BTCUSDT: OrderRequest.__init__() got an unexpected keyword argument 'stop_loss'
+2025-08-25 16:49:14,413 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:50:14,425 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:51:14,440 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:52:14,444 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:53:14,451 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:53:58,040 - src.bot.strategies_base - ERROR - Error in SMA analysis for BTCUSDT: OrderRequest.__init__() got an unexpected keyword argument 'stop_loss'
+2025-08-25 16:54:14,464 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:55:03,554 - src.bot.strategies_base - ERROR - Error in SMA analysis for BTCUSDT: OrderRequest.__init__() got an unexpected keyword argument 'stop_loss'
+2025-08-25 16:55:14,469 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:55:37,574 - src.bot.strategies_base - ERROR - Error in SMA analysis for BTCUSDT: OrderRequest.__init__() got an unexpected keyword argument 'stop_loss'
+2025-08-25 16:56:14,478 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:57:14,487 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:58:14,502 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:59:14,505 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 16:59:30,498 - src.bot.strategies_base - ERROR - Error in SMA analysis for BTCUSDT: OrderRequest.__init__() got an unexpected keyword argument 'stop_loss'
+2025-08-25 17:00:03,179 - src.bot.strategies_base - ERROR - Error in SMA analysis for BTCUSDT: OrderRequest.__init__() got an unexpected keyword argument 'stop_loss'
+2025-08-25 17:00:14,512 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 17:01:14,523 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 17:01:42,669 - src.bot.strategies_base - ERROR - Error in SMA analysis for BTCUSDT: OrderRequest.__init__() got an unexpected keyword argument 'stop_loss'
+2025-08-25 17:02:16,764 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 17:03:16,769 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 17:04:16,776 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 17:04:28,373 - src.bot.strategies_base - ERROR - Error in SMA analysis for BTCUSDT: OrderRequest.__init__() got an unexpected keyword argument 'stop_loss'
+2025-08-25 17:05:16,781 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 17:05:33,373 - src.bot.strategies_base - ERROR - Error in SMA analysis for BTCUSDT: OrderRequest.__init__() got an unexpected keyword argument 'stop_loss'
+2025-08-25 17:06:16,797 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 17:07:16,809 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 17:08:16,816 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 17:09:16,825 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 17:10:16,828 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 17:11:16,837 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 17:12:15,833 - pybit._http_manager - ERROR - invalid request, please check your server timestamp or recv_window param. req_timestamp[1756152735475],server_timestamp[1756152734472],recv_window[5000] (ErrCode: 10002). Added 2.5 seconds to recv_window. 2 retries remain.
+2025-08-25 17:12:19,529 - pybit._http_manager - ERROR - invalid request, please check your server timestamp or recv_window param. req_timestamp[1756152739186],server_timestamp[1756152738184],recv_window[5000] (ErrCode: 10002). Added 2.5 seconds to recv_window. 2 retries remain.
+2025-08-25 17:12:23,538 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 17:12:54,968 - pybit._http_manager - ERROR - invalid request, please check your server timestamp or recv_window param. req_timestamp[1756152774558],server_timestamp[1756152773551],recv_window[5000] (ErrCode: 10002). Added 2.5 seconds to recv_window. 2 retries remain.
+2025-08-25 17:13:00,346 - pybit._http_manager - ERROR - invalid request, please check your server timestamp or recv_window param. req_timestamp[1756152779995],server_timestamp[1756152778990],recv_window[5000] (ErrCode: 10002). Added 2.5 seconds to recv_window. 2 retries remain.
+2025-08-25 17:13:23,552 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 17:13:36,786 - pybit._http_manager - ERROR - invalid request, please check your server timestamp or recv_window param. req_timestamp[1756152816450],server_timestamp[1756152815439],recv_window[5000] (ErrCode: 10002). Added 2.5 seconds to recv_window. 2 retries remain.
+2025-08-25 17:13:41,147 - pybit._http_manager - ERROR - invalid request, please check your server timestamp or recv_window param. req_timestamp[1756152820805],server_timestamp[1756152819799],recv_window[5000] (ErrCode: 10002). Added 2.5 seconds to recv_window. 2 retries remain.
+2025-08-25 17:13:44,486 - pybit._http_manager - ERROR - invalid request, please check your server timestamp or recv_window param. req_timestamp[1756152824149],server_timestamp[1756152823138],recv_window[7500] (ErrCode: 10002). Added 2.5 seconds to recv_window. 1 retries remain.
+2025-08-25 17:13:47,825 - pybit._http_manager - ERROR - invalid request, please check your server timestamp or recv_window param. req_timestamp[1756152827487],server_timestamp[1756152826477],recv_window[10000] (ErrCode: 10002). Added 2.5 seconds to recv_window. 0 retries remain.
+2025-08-25 17:14:23,035 - pybit._http_manager - ERROR - invalid request, please check your server timestamp or recv_window param. req_timestamp[1756152862691],server_timestamp[1756152861688],recv_window[5000] (ErrCode: 10002). Added 2.5 seconds to recv_window. 2 retries remain.
+2025-08-25 17:14:27,392 - pybit._http_manager - ERROR - invalid request, please check your server timestamp or recv_window param. req_timestamp[1756152867041],server_timestamp[1756152866033],recv_window[5000] (ErrCode: 10002). Added 2.5 seconds to recv_window. 2 retries remain.
+2025-08-25 17:14:30,731 - pybit._http_manager - ERROR - invalid request, please check your server timestamp or recv_window param. req_timestamp[1756152870394],server_timestamp[1756152869384],recv_window[7500] (ErrCode: 10002). Added 2.5 seconds to recv_window. 1 retries remain.
+2025-08-25 17:14:34,080 - pybit._http_manager - ERROR - invalid request, please check your server timestamp or recv_window param. req_timestamp[1756152873733],server_timestamp[1756152872730],recv_window[10000] (ErrCode: 10002). Added 2.5 seconds to recv_window. 0 retries remain.
+2025-08-25 17:14:38,148 - __main__ - INFO - Bot worker status: 1 active, 0 paused, 1 total bots
+2025-08-25 17:15:21,489 - __main__ - INFO - Received signal 2, initiating shutdown...
+2025-08-25 17:15:21,781 - __main__ - INFO - Shutting down bot worker...
+2025-08-25 17:15:21,782 - __main__ - INFO - Stopping bot for client client_001
+2025-08-25 17:15:21,806 - src.bot.trading_bot - INFO - Stopping trading bot for client client_001
+2025-08-25 17:15:21,807 - __main__ - INFO - Bot worker shutdown complete

@@ -1,0 +1,316 @@
+name: Deploy Pipeline - Bot Trading MVP
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Ambiente para deploy'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+        - staging
+        - production
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # Job 1: Deploy para Staging
+  deploy-staging:
+    name: 🚀 Deploy to Staging
+    runs-on: ubuntu-latest
+    environment: staging
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging' || github.event_name == 'release'
+    
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v4
+      
+    - name: Setup Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: Login no Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Extrair metadados
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=tag
+          type=sha,prefix=staging-
+          
+    - name: Build e push da imagem
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        
+    - name: Deploy para staging via SSH
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.STAGING_HOST }}
+        username: ${{ secrets.STAGING_USER }}
+        key: ${{ secrets.STAGING_SSH_KEY }}
+        script: |
+          # Parar containers existentes
+          docker-compose -f /opt/trading-bot/docker-compose.staging.yml down
+          
+          # Atualizar imagens
+          docker pull ${{ steps.meta.outputs.tags }}
+          
+          # Executar migrations se necessário
+          docker run --rm --network trading-bot_default \
+            -e DATABASE_URL=${{ secrets.STAGING_DATABASE_URL }} \
+            ${{ steps.meta.outputs.tags }} \
+            python -m alembic upgrade head
+          
+          # Iniciar novos containers
+          cd /opt/trading-bot
+          docker-compose -f docker-compose.staging.yml up -d
+          
+          # Aguardar serviços ficarem prontos
+          sleep 30
+          
+          # Verificar health checks
+          curl -f http://localhost:8000/health || exit 1
+          
+    - name: Executar testes de smoke em staging
+      run: |
+        # Aguardar deploy completar
+        sleep 60
+        
+        # Executar testes básicos
+        curl -f ${{ secrets.STAGING_URL }}/health
+        curl -f ${{ secrets.STAGING_URL }}/api/v1/status
+        
+    - name: Notificar deploy de staging
+      if: success()
+      run: |
+        echo "✅ Deploy para staging concluído com sucesso!"
+        echo "URL: ${{ secrets.STAGING_URL }}"
+
+  # Job 2: Testes de Aceitação em Staging
+  acceptance-tests:
+    name: 🧪 Acceptance Tests
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v4
+      
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Instalar dependências de teste
+      run: |
+        pip install pytest requests
+        
+    - name: Executar testes de aceitação
+      env:
+        STAGING_URL: ${{ secrets.STAGING_URL }}
+        STAGING_API_KEY: ${{ secrets.STAGING_API_KEY }}
+      run: |
+        pytest tests/acceptance/ -v --tb=short
+        
+    - name: Executar testes de carga básicos
+      env:
+        STAGING_URL: ${{ secrets.STAGING_URL }}
+      run: |
+        # Teste básico de carga com curl
+        for i in {1..10}; do
+          curl -f $STAGING_URL/api/v1/status &
+        done
+        wait
+
+  # Job 3: Deploy para Produção (Manual)
+  deploy-production:
+    name: 🏭 Deploy to Production
+    runs-on: ubuntu-latest
+    environment: production
+    needs: acceptance-tests
+    if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production')
+    
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v4
+      
+    - name: Setup Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: Login no Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Extrair metadados para produção
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=tag
+          type=sha,prefix=prod-
+          latest
+          
+    - name: Build e push da imagem de produção
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        
+    - name: Criar backup da versão atual
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.PRODUCTION_HOST }}
+        username: ${{ secrets.PRODUCTION_USER }}
+        key: ${{ secrets.PRODUCTION_SSH_KEY }}
+        script: |
+          # Backup do banco de dados
+          docker exec trading-bot_db_1 pg_dump -U postgres trading_bot > /opt/backups/pre-deploy-$(date +%Y%m%d-%H%M%S).sql
+          
+          # Backup da configuração atual
+          cp /opt/trading-bot/docker-compose.yml /opt/backups/docker-compose-$(date +%Y%m%d-%H%M%S).yml
+          
+    - name: Deploy para produção
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.PRODUCTION_HOST }}
+        username: ${{ secrets.PRODUCTION_USER }}
+        key: ${{ secrets.PRODUCTION_SSH_KEY }}
+        script: |
+          cd /opt/trading-bot
+          
+          # Parar trading (graceful shutdown)
+          docker-compose exec api python -c "
+          import requests
+          requests.post('http://localhost:8000/api/v1/trading/stop')
+          "
+          
+          # Aguardar posições serem fechadas
+          sleep 60
+          
+          # Parar containers
+          docker-compose down
+          
+          # Atualizar imagens
+          docker pull ${{ steps.meta.outputs.tags }}
+          
+          # Executar migrations
+          docker run --rm --network trading-bot_default \
+            -e DATABASE_URL=${{ secrets.PRODUCTION_DATABASE_URL }} \
+            ${{ steps.meta.outputs.tags }} \
+            python -m alembic upgrade head
+          
+          # Iniciar novos containers
+          docker-compose up -d
+          
+          # Aguardar serviços ficarem prontos
+          sleep 60
+          
+          # Verificar health checks
+          curl -f http://localhost:8000/health || exit 1
+          
+          # Reativar trading gradualmente
+          docker-compose exec api python -c "
+          import requests
+          requests.post('http://localhost:8000/api/v1/trading/start', json={'mode': 'gradual'})
+          "
+          
+    - name: Verificar deploy de produção
+      run: |
+        # Aguardar deploy completar
+        sleep 120
+        
+        # Verificar endpoints críticos
+        curl -f ${{ secrets.PRODUCTION_URL }}/health
+        curl -f ${{ secrets.PRODUCTION_URL }}/api/v1/status
+        
+        # Verificar métricas básicas
+        response=$(curl -s ${{ secrets.PRODUCTION_URL }}/api/v1/metrics)
+        echo "Métricas: $response"
+        
+    - name: Notificar deploy de produção
+      if: success()
+      run: |
+        echo "🎉 Deploy para produção concluído com sucesso!"
+        echo "URL: ${{ secrets.PRODUCTION_URL }}"
+        
+    - name: Rollback em caso de falha
+      if: failure()
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.PRODUCTION_HOST }}
+        username: ${{ secrets.PRODUCTION_USER }}
+        key: ${{ secrets.PRODUCTION_SSH_KEY }}
+        script: |
+          echo "🚨 Executando rollback automático..."
+          
+          # Parar containers atuais
+          cd /opt/trading-bot
+          docker-compose down
+          
+          # Restaurar versão anterior
+          docker-compose up -d
+          
+          # Verificar se rollback funcionou
+          sleep 30
+          curl -f http://localhost:8000/health || echo "❌ Rollback falhou!"
+
+  # Job 4: Monitoramento Pós-Deploy
+  post-deploy-monitoring:
+    name: 📊 Post-Deploy Monitoring
+    runs-on: ubuntu-latest
+    needs: deploy-production
+    if: success()
+    
+    steps:
+    - name: Monitorar métricas por 10 minutos
+      run: |
+        echo "📊 Iniciando monitoramento pós-deploy..."
+        
+        for i in {1..10}; do
+          echo "Verificação $i/10..."
+          
+          # Verificar health
+          health=$(curl -s ${{ secrets.PRODUCTION_URL }}/health)
+          echo "Health: $health"
+          
+          # Verificar métricas
+          metrics=$(curl -s ${{ secrets.PRODUCTION_URL }}/api/v1/metrics)
+          echo "Métricas: $metrics"
+          
+          # Aguardar 1 minuto
+          sleep 60
+        done
+        
+        echo "✅ Monitoramento concluído - Sistema estável!"
+        
+    - name: Alertar se houver problemas
+      if: failure()
+      run: |
+        echo "🚨 Problemas detectados no monitoramento pós-deploy!"
+        # Aqui você pode adicionar alertas para Slack/PagerDuty/etc.

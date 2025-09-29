@@ -1,0 +1,127 @@
+# Crypto Trading MVP - Dashboard Streamlit
+# Multi-stage build otimizado para interface web
+
+# Stage 1: Build dependencies
+FROM python:3.11-slim as builder
+
+# Metadata
+LABEL maintainer="Crypto Trading MVP Team"
+LABEL version="2.0"
+LABEL description="Dashboard Streamlit do Bot de Trading"
+
+# Argumentos de build
+ARG BUILD_DATE
+ARG VERSION
+ARG VCS_REF
+
+# Labels para rastreabilidade
+LABEL org.label-schema.build-date=$BUILD_DATE \
+      org.label-schema.name="crypto-trading-dashboard" \
+      org.label-schema.description="Dashboard Streamlit do Bot de Trading" \
+      org.label-schema.version=$VERSION \
+      org.label-schema.vcs-ref=$VCS_REF \
+      org.label-schema.schema-version="1.0"
+
+# Variáveis de ambiente para build
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONHASHSEED=random \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Instalar dependências do sistema para build
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    gcc \
+    g++ \
+    libffi-dev \
+    libssl-dev \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Criar usuário não-root
+RUN groupadd -r streamlit && useradd -r -g streamlit streamlit
+
+# Criar diretório de trabalho
+WORKDIR /app
+
+# Copiar arquivos de dependências
+COPY requirements.txt requirements-dashboard.txt* ./
+
+# Instalar dependências Python em ambiente virtual
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Upgrade pip e instalar dependências
+RUN pip install --upgrade pip setuptools wheel && \
+    pip install -r requirements.txt && \
+    if [ -f requirements-dashboard.txt ]; then pip install -r requirements-dashboard.txt; fi
+
+# Stage 2: Runtime
+FROM python:3.11-slim as runtime
+
+# Variáveis de ambiente para runtime
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app \
+    PATH="/opt/venv/bin:$PATH" \
+    STREAMLIT_SERVER_PORT=8501 \
+    STREAMLIT_SERVER_ADDRESS=0.0.0.0 \
+    STREAMLIT_SERVER_HEADLESS=true \
+    STREAMLIT_BROWSER_GATHER_USAGE_STATS=false \
+    STREAMLIT_SERVER_ENABLE_CORS=false \
+    STREAMLIT_SERVER_ENABLE_XSRF_PROTECTION=true
+
+# Instalar apenas dependências runtime necessárias
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Criar usuário não-root
+RUN groupadd -r streamlit && useradd -r -g streamlit -d /app -s /bin/bash streamlit
+
+# Copiar ambiente virtual do stage de build
+COPY --from=builder /opt/venv /opt/venv
+
+# Criar estrutura de diretórios
+RUN mkdir -p /app/{logs,data,static,.streamlit} && \
+    chown -R streamlit:streamlit /app
+
+# Definir diretório de trabalho
+WORKDIR /app
+
+# Copiar código da aplicação
+COPY --chown=streamlit:streamlit app/ ./app/
+COPY --chown=streamlit:streamlit src/ ./src/
+COPY --chown=streamlit:streamlit *.py ./
+
+# Copiar configurações do Streamlit
+COPY --chown=streamlit:streamlit docker/dashboard/config.toml ./.streamlit/config.toml
+COPY --chown=streamlit:streamlit docker/dashboard/secrets.toml ./.streamlit/secrets.toml
+
+# Copiar scripts de inicialização
+COPY --chown=streamlit:streamlit docker/dashboard/entrypoint.sh /entrypoint.sh
+COPY --chown=streamlit:streamlit docker/dashboard/healthcheck.py /healthcheck.py
+
+# Tornar scripts executáveis
+RUN chmod +x /entrypoint.sh /healthcheck.py
+
+# Mudar para usuário não-root
+USER streamlit
+
+# Expor porta do Streamlit
+EXPOSE 8501
+
+# Health check específico para Streamlit
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD python /healthcheck.py || exit 1
+
+# Volumes para dados persistentes
+VOLUME ["/app/logs", "/app/data"]
+
+# Comando padrão
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["streamlit", "run", "app/dashboard.py", "--server.port=8501", "--server.address=0.0.0.0"]
+

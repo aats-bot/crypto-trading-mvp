@@ -1,0 +1,119 @@
+# Crypto Trading MVP - API Principal
+# Multi-stage build otimizado para produção
+# Compatível com Windows e Linux
+
+# Stage 1: Build dependencies
+FROM python:3.11-slim as builder
+
+# Metadata
+LABEL maintainer="Crypto Trading MVP Team"
+LABEL version="2.0"
+LABEL description="API Principal do Bot de Trading Automatizado"
+
+# Argumentos de build
+ARG BUILD_DATE
+ARG VERSION
+ARG VCS_REF
+
+# Labels para rastreabilidade
+LABEL org.label-schema.build-date=$BUILD_DATE \
+      org.label-schema.name="crypto-trading-api" \
+      org.label-schema.description="API Principal do Bot de Trading" \
+      org.label-schema.version=$VERSION \
+      org.label-schema.vcs-ref=$VCS_REF \
+      org.label-schema.schema-version="1.0"
+
+# Variáveis de ambiente para build
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONHASHSEED=random \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Instalar dependências do sistema necessárias para build
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    gcc \
+    g++ \
+    libffi-dev \
+    libssl-dev \
+    pkg-config \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Criar usuário não-root para segurança
+RUN groupadd -r trading && useradd -r -g trading trading
+
+# Criar diretório de trabalho
+WORKDIR /app
+
+# Copiar arquivos de dependências
+COPY requirements.txt requirements-prod.txt* ./
+
+# Instalar dependências Python em ambiente virtual
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Upgrade pip e instalar dependências
+RUN pip install --upgrade pip setuptools wheel && \
+    pip install -r requirements.txt && \
+    if [ -f requirements-prod.txt ]; then pip install -r requirements-prod.txt; fi
+
+# Stage 2: Runtime
+FROM python:3.11-slim as runtime
+
+# Variáveis de ambiente para runtime
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app \
+    PATH="/opt/venv/bin:$PATH"
+
+# Instalar apenas dependências runtime necessárias
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Criar usuário não-root
+RUN groupadd -r trading && useradd -r -g trading -d /app -s /bin/bash trading
+
+# Copiar ambiente virtual do stage de build
+COPY --from=builder /opt/venv /opt/venv
+
+# Criar estrutura de diretórios
+RUN mkdir -p /app/{logs,data,tmp} && \
+    chown -R trading:trading /app
+
+# Definir diretório de trabalho
+WORKDIR /app
+
+# Copiar código da aplicação
+COPY --chown=trading:trading app/ ./app/
+COPY --chown=trading:trading src/ ./src/
+COPY --chown=trading:trading *.py ./
+
+# Copiar scripts de inicialização
+COPY --chown=trading:trading docker/api/entrypoint.sh /entrypoint.sh
+COPY --chown=trading:trading docker/api/healthcheck.py /healthcheck.py
+
+# Tornar scripts executáveis
+RUN chmod +x /entrypoint.sh /healthcheck.py
+
+# Mudar para usuário não-root
+USER trading
+
+# Expor porta da aplicação
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD python /healthcheck.py || exit 1
+
+# Volumes para dados persistentes
+VOLUME ["/app/logs", "/app/data"]
+
+# Comando padrão
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+

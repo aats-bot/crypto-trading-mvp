@@ -1,0 +1,71 @@
+# Crypto Trading MVP - API Principal
+FROM python:3.11-slim as builder
+
+# Variáveis de ambiente para build
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Instalar dependências do sistema
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copiar arquivos de dependências
+COPY requirements.txt requirements-prod.txt* ./
+
+# Criar virtual environment e instalar dependências
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+RUN pip install --upgrade pip setuptools wheel && \
+    pip install -r requirements.txt && \
+    if [ -f requirements-prod.txt ]; then pip install -r requirements-prod.txt; fi
+
+# Stage de runtime
+FROM python:3.11-slim as runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app \
+    PATH="/opt/venv/bin:$PATH"
+
+# Instalar dependências runtime
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    netcat-traditional \
+    && rm -rf /var/lib/apt/lists/*
+
+# Criar usuário não-root
+RUN groupadd -r apiuser && useradd -r -g apiuser -d /app apiuser
+
+# Copiar virtual environment
+COPY --from=builder /opt/venv /opt/venv
+
+# Criar diretórios
+RUN mkdir -p /app/{logs,data,tmp} && \
+    chown -R apiuser:apiuser /app
+
+WORKDIR /app
+
+# Copiar código da aplicação
+COPY --chown=apiuser:apiuser . .
+
+# Copiar entrypoint se existir
+COPY --chown=apiuser:apiuser docker/api/entrypoint.sh /entrypoint.sh 2>/dev/null || echo "#!/bin/bash\nexec \"\$@\"" > /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+USER apiuser
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+VOLUME ["/app/logs", "/app/data"]
+
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

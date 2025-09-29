@@ -1,0 +1,18 @@
+# Recording Rules for Crypto Trading MVP
+groups:
+  - name: crypto_trading_recording_rules
+    interval: 30s
+    rules:
+      # API Performance Rules
+      - record: api:http_request_rate
+        expr: rate(http_requests_total{job="crypto-trading-api"}[5m])
+
+      - record: api:http_request_latency_p95
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job="crypto-trading-api"}[5m]))
+
+      # Trading Performance Rules
+      - record: trading:order_rate
+        expr: rate(trading_orders_total[5m])
+
+      - record: trading:pnl_rate
+        expr: rate(trading_pnl_total[5m])

@@ -1,0 +1,35 @@
+# Dependências de teste compatíveis com Windows
+# Para uso no MVP de Bot de Trading Automatizado
+
+# Core testing framework
+pytest>=8.0.0
+pytest-asyncio>=0.21.0
+pytest-mock>=3.10.0
+pytest-cov>=4.0.0
+
+# Security and authentication
+bcrypt>=4.0.0
+PyJWT>=2.8.0
+
+# Data manipulation and analysis
+pandas>=2.0.0
+numpy>=1.24.0
+
+# Optional: Performance testing (Windows compatible)
+pytest-benchmark>=4.0.0
+
+# Optional: Parallel testing
+pytest-xdist>=3.0.0
+
+# Optional: HTML reports
+pytest-html>=3.0.0
+
+# Optional: Timeout handling
+pytest-timeout>=2.0.0
+
+# Development utilities
+coverage>=7.0.0
+
+# Note: memray is not compatible with Windows
+# Note: pkg-config is not required for Windows builds
+

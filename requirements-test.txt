@@ -1,0 +1,105 @@
+# Dependências para testes do Crypto Trading MVP
+
+# Framework de testes
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-mock>=3.12.0
+pytest-cov>=4.1.0
+pytest-timeout>=2.1.0
+pytest-xdist>=3.3.0  # Para execução paralela de testes
+pytest-html>=4.0.0   # Para relatórios HTML
+pytest-json-report>=1.5.0  # Para relatórios JSON
+
+# Mocking e fixtures
+responses>=0.23.0     # Para mock de requests HTTP
+aioresponses>=0.7.0   # Para mock de requests assíncronos
+factory-boy>=3.3.0    # Para criação de fixtures complexas
+faker>=19.0.0         # Para geração de dados fake
+
+# Testes de API
+httpx>=0.25.0         # Cliente HTTP assíncrono para testes
+requests-mock>=1.11.0 # Mock para requests síncronos
+
+# Testes de performance
+pytest-benchmark>=4.0.0  # Para benchmarks de performance
+locust>=2.17.0           # Para testes de carga
+
+# Testes de segurança
+bandit>=1.7.0            # Análise de segurança
+safety>=2.3.0            # Verificação de vulnerabilidades
+
+# Análise de código
+flake8>=6.1.0            # Linting
+black>=23.11.0           # Formatação
+isort>=5.12.0            # Organização de imports
+mypy>=1.7.0              # Type checking
+pylint>=3.0.0            # Análise estática avançada
+
+# Cobertura de testes
+coverage>=7.3.0          # Cobertura de código
+pytest-cov>=4.1.0       # Integração pytest + coverage
+
+# Testes de banco de dados
+pytest-postgresql>=5.0.0  # Para testes com PostgreSQL
+pytest-redis>=3.0.0       # Para testes com Redis
+
+# Testes de interface web (para dashboard Streamlit)
+selenium>=4.15.0         # Automação de browser
+playwright>=1.40.0       # Alternativa moderna ao Selenium
+pytest-playwright>=0.4.0 # Integração pytest + playwright
+
+# Utilitários para testes
+freezegun>=1.2.0         # Mock de datetime
+time-machine>=2.13.0     # Alternativa ao freezegun
+pyfakefs>=5.3.0          # Mock do filesystem
+testcontainers>=3.7.0    # Containers para testes de integração
+
+# Dados e análise para testes
+pandas>=2.1.0            # Manipulação de dados
+numpy>=1.25.0            # Computação numérica
+matplotlib>=3.8.0        # Para gráficos em testes
+plotly>=5.17.0           # Gráficos interativos
+
+# Dependências do projeto principal (versões de teste)
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+pydantic>=2.5.0
+python-dotenv>=1.0.0
+sqlalchemy>=2.0.0
+asyncpg>=0.29.0
+alembic>=1.13.0
+psycopg2-binary>=2.9.0
+redis>=5.0.0
+aioredis>=2.0.0
+pybit>=5.7.0
+pandas-ta>=0.3.14b0
+streamlit>=1.28.0
+cryptography>=40.0.0
+bcrypt>=4.1.0
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.0
+aiohttp>=3.9.0
+websockets>=12.0
+celery>=5.3.0
+prometheus-client>=0.19.0
+structlog>=23.2.0
+
+# Ferramentas de desenvolvimento
+pre-commit>=3.6.0       # Hooks de pre-commit
+tox>=4.11.0              # Testes em múltiplos ambientes
+nox>=2023.4.22           # Alternativa ao tox
+
+# Relatórios e documentação
+sphinx>=7.2.0           # Documentação
+sphinx-rtd-theme>=1.3.0 # Tema para documentação
+allure-pytest>=2.13.0   # Relatórios avançados de teste
+
+# Debugging e profiling
+pytest-profiling>=1.7.0 # Profiling de testes
+pytest-memray>=1.0.0    # Análise de memória
+py-spy>=0.3.0            # Profiler de Python
+
+# Utilitários específicos para trading
+ccxt>=4.1.0              # Para testes com múltiplas exchanges (se necessário)
+ta>=0.10.0               # Indicadores técnicos alternativos para validação
+

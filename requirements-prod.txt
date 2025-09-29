@@ -1,0 +1,28 @@
+﻿# Crypto Trading MVP - Dependências de Produção
+# Para containers Docker em ambiente de produção
+
+# Web Server ASGI
+gunicorn==21.2.0
+uvicorn[standard]==0.24.0
+
+# Database
+psycopg2-binary==2.9.9
+alembic==1.12.1
+
+# Cache
+redis==5.0.1
+hiredis==2.2.3
+
+# Monitoramento
+prometheus-client==0.19.0
+sentry-sdk[fastapi]==1.38.0
+
+# Logging
+loguru==0.7.2
+
+# Security
+cryptography==41.0.7
+python-jose[cryptography]==3.3.0
+
+# Performance
+orjson==3.9.10

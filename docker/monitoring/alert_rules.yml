@@ -1,0 +1,46 @@
+# Alert Rules for Crypto Trading MVP
+groups:
+  - name: crypto_trading_alerts
+    rules:
+      # API Health Alerts
+      - alert: APIDown
+        expr: up{job="crypto-trading-api"} == 0
+        for: 30s
+        labels:
+          severity: critical
+          service: api
+        annotations:
+          summary: "Crypto Trading API is down"
+          description: "The Crypto Trading API has been down for more than 30 seconds"
+
+      - alert: APIHighLatency
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job="crypto-trading-api"}[5m])) > 1
+        for: 2m
+        labels:
+          severity: warning
+          service: api
+        annotations:
+          summary: "API high latency detected"
+          description: "95th percentile latency is {{ $value }}s"
+
+      # Trading Specific Alerts
+      - alert: TradingHighLoss
+        expr: trading_pnl_total < -1000
+        for: 1m
+        labels:
+          severity: critical
+          service: trading
+        annotations:
+          summary: "High trading losses detected"
+          description: "Total P&L is {{ $value }}"
+
+      # System Alerts
+      - alert: HighCPUUsage
+        expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+          service: system
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU usage is {{ $value }}%"

@@ -1,0 +1,78 @@
+# Crypto Trading MVP - Dashboard Streamlit
+FROM python:3.11-slim as builder
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Instalar dependências do sistema
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copiar arquivos de dependências
+COPY requirements.txt requirements-dashboard.txt* ./
+
+# Criar virtual environment e instalar dependências
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+RUN pip install --upgrade pip setuptools wheel && \
+    pip install -r requirements.txt && \
+    if [ -f requirements-dashboard.txt ]; then pip install -r requirements-dashboard.txt; fi
+
+# Stage de runtime
+FROM python:3.11-slim as runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app \
+    PATH="/opt/venv/bin:$PATH"
+
+# Instalar dependências runtime
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    netcat-traditional \
+    && rm -rf /var/lib/apt/lists/*
+
+# Criar usuário não-root
+RUN groupadd -r streamlit && useradd -r -g streamlit -d /app streamlit
+
+# Copiar virtual environment
+COPY --from=builder /opt/venv /opt/venv
+
+# Criar diretórios
+RUN mkdir -p /app/{logs,data,.streamlit} && \
+    chown -R streamlit:streamlit /app
+
+WORKDIR /app
+
+# Copiar código da aplicação
+COPY --chown=streamlit:streamlit . .
+
+# Criar configuração Streamlit básica
+RUN echo '[server]' > /app/.streamlit/config.toml && \
+    echo 'port = 8501' >> /app/.streamlit/config.toml && \
+    echo 'address = "0.0.0.0"' >> /app/.streamlit/config.toml && \
+    echo 'headless = true' >> /app/.streamlit/config.toml && \
+    echo 'enableCORS = false' >> /app/.streamlit/config.toml && \
+    chown -R streamlit:streamlit /app/.streamlit
+
+# Copiar entrypoint se existir
+COPY --chown=streamlit:streamlit docker/dashboard/entrypoint.sh /entrypoint.sh 2>/dev/null || echo "#!/bin/bash\nexec \"\$@\"" > /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+USER streamlit
+
+EXPOSE 8501
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=3 \
+    CMD curl -f http://localhost:8501/_stcore/health || exit 1
+
+VOLUME ["/app/logs", "/app/data"]
+
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["streamlit", "run", "app/dashboard.py", "--server.port=8501", "--server.address=0.0.0.0", "--server.headless=true"]

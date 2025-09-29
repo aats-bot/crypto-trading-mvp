@@ -1,0 +1,119 @@
+# 🚫 Arquivos e diretórios ignorados pelo Git
+
+# 🔐 Arquivos sensíveis
+.env
+.env.local
+.env.production
+*.key
+*.pem
+secrets/
+
+# 🗄️ Banco de dados
+*.db
+*.sqlite
+*.sqlite3
+data/database/
+data/backups/
+
+# 📝 Logs
+logs/
+*.log
+*.log.*
+
+# 🐍 Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# 🧪 Testes
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+.hypothesis/
+
+# 🔧 IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 🐳 Docker
+.docker/
+docker-compose.override.yml
+
+# 📊 Dados temporários
+data/temp/
+data/exports/
+*.tmp
+*.temp
+
+# 🌐 Node.js (se usar)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 📱 Sistema
+.DS_Store
+Thumbs.db
+
+# 🔄 Jupyter Notebooks
+.ipynb_checkpoints
+
+# 📈 Dados de mercado
+market_data/
+historical_data/
+
+# 🎨 Streamlit
+.streamlit/
+
+# 🔧 Configurações locais
+config/local.py
+config/development.py
+config/production.py
+
+# 📦 Dependências
+venv/
+env/
+ENV/
+.venv/
+
+# 🚀 Deploy
+deployment/secrets/
+deployment/production/
+*.tar.gz
+*.zip
+
+# 📊 Relatórios
+reports/
+*.pdf
+*.xlsx
+
+# 🔍 Monitoramento
+monitoring/data/
+prometheus_data/
+grafana_data/
+

@@ -1,0 +1,61 @@
+# Crypto Trading MVP - Worker
+# Container para processamento assíncrono (SEM TA-LIB)
+
+FROM python:3.11-slim as builder
+
+LABEL maintainer="Crypto Trading MVP Team"
+LABEL version="3.0"
+LABEL description="Worker para processamento assíncrono ^(sem TA-Lib^)"
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential gcc g++ libffi-dev libssl-dev curl \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY requirements.txt requirements-worker.txt* ./
+
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+RUN pip install --upgrade pip setuptools wheel && \
+    pip install -r requirements.txt && \
+    if [ -f requirements-worker.txt ]; then pip install -r requirements-worker.txt; fi
+
+# Runtime stage
+FROM python:3.11-slim as runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app \
+    PATH="/opt/venv/bin:$PATH"
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN groupadd -r worker && useradd -r -g worker -d /app worker
+
+COPY --from=builder /opt/venv /opt/venv
+
+RUN mkdir -p /app/{logs,data,tmp} && \
+    chown -R worker:worker /app
+
+WORKDIR /app
+
+COPY --chown=worker:worker app/ ./app/
+COPY --chown=worker:worker src/ ./src/
+COPY --chown=worker:worker *.py ./
+
+COPY --chown=worker:worker docker/worker/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+USER worker
+
+VOLUME ["/app/logs", "/app/data"]
+
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["python", "src/bot/worker.py"]
