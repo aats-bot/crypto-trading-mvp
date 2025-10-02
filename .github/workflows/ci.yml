@@ -87,3 +87,10 @@ jobs:
         with:
           name: coverage-xml
           path: coverage.xml
+          
+- name: Upgrade pip toolchain
+  run: python -m pip install --upgrade pip setuptools wheel
+
+# Opcional (apenas se ainda ver erro envolvendo Cython/llvmlite/numba):
+- name: Pre-installs for TA stack
+  run: pip install "numpy>=2.2.6,<2.4" "Cython==3.0.12"
