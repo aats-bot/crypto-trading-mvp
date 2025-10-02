@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual env / caches
+.venv/
+.env
+.cache/
+.mypy_cache/
+.pytest_cache/
+
+# Logs e artefatos
+logs/
+*.log
+coverage.xml
+htmlcov/
+dist/
+build/
+
+# IDE / Editor
+.vscode/
+.idea/
