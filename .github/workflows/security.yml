@@ -32,17 +32,20 @@ jobs:
           pip install safety bandit
 
       - name: Safety
-        run: safety check --full-report --output text || true
+        run: |
+          safety check --full-report | tee safety-report.txt || true
 
       - name: Bandit
-        run: bandit -r . -q || true
+        run: |
+          bandit -r . -q | tee bandit-report.txt || true
 
-      - name: Upload text report (logs)
+      - name: Upload text reports
         uses: actions/upload-artifact@v4
         with:
           name: security-logs
           path: |
-            .  # só pra garantir que temos algo; Bandit/Safety imprimem no log
+            safety-report.txt
+            bandit-report.txt
 
   security-report:
     name: Security Report (Summary)
