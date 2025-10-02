@@ -47,3 +47,11 @@ pytest-asyncio>=0.21.0
 email-validator
 psutil==5.9.5
 prometheus-client>=0.20,<1
+
+# =========================
+# Streamlit / App
+# =========================
+streamlit==1.44.1
+gitpython==3.1.44
+pyarrow==19.0.1
+
