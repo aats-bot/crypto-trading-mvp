@@ -13,7 +13,6 @@ jobs:
   lint:
     name: Lint & Static Checks
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -37,29 +36,10 @@ jobs:
             echo "No pre-commit config found, skipping."
           fi
 
-      - name: Extra linters (fallback)
-        run: |
-          python -c "import sys; import importlib.util as u; print('mypy:',bool(u.find_spec('mypy')),'flake8:',bool(u.find_spec('flake8')),'black:',bool(u.find_spec('black')),'pylint:',bool(u.find_spec('pylint')))"
-          if python - <<'PY'
-import importlib.util as u
-import sys, os
-def has(m): return bool(u.find_spec(m))
-ok=True
-if has("black"): os.system("black --check .") or True
-if has("flake8"): os.system("flake8 .") or True
-if has("mypy") and os.path.exists("pyproject.toml") or os.path.exists("mypy.ini"):
-    os.system("mypy .") or True
-if has("pylint") and os.path.exists("pyproject.toml"):
-    # ajuste o pacote/dir alvo se necessário
-    os.system("pylint $(ls -d */ | head -n1)") or True
-PY
-          then
-            echo "Lint fallback completed."
-          fi
-
   tests:
     name: Tests (pytest)
     runs-on: ubuntu-latest
+
     services:
       postgres:
         image: postgres:16
@@ -67,7 +47,8 @@ PY
           POSTGRES_PASSWORD: postgres
           POSTGRES_USER: postgres
           POSTGRES_DB: test
-        ports: ["5432:5432"]
+        ports:
+          - "5432:5432"
         options: >-
           --health-cmd="pg_isready -U postgres"
           --health-interval=10s
@@ -75,7 +56,8 @@ PY
           --health-retries=5
       redis:
         image: redis:7
-        ports: ["6379:6379"]
+        ports:
+          - "6379:6379"
         options: >-
           --health-cmd "redis-cli ping || exit 1"
           --health-interval 10s
@@ -97,19 +79,20 @@ PY
           python-version: "3.13"
           cache: "pip"
 
-      - name: Install deps (tests only)
+      - name: Install deps
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements-test.txt
 
-      - name: Install Playwright browsers (if used)
-        if: ${{ contains(steps.deps_out.outputs.uses_playwright || 'true', 'true') == false }}
+      - name: Install Playwright browsers (only if plugin is present)
         run: |
-          if python -c "import importlib.util as u; print(bool(u.find_spec('pytest_playwright')))" | grep -q "True"; then
-            python -m playwright install --with-deps
-          else
-            echo "pytest-playwright not present, skipping browser install."
-          fi
+          python - <<'PY'
+          import importlib.util as u, subprocess, sys
+          if u.find_spec("pytest_playwright"):
+              subprocess.check_call([sys.executable, "-m", "playwright", "install", "--with-deps"])
+          else:
+              print("pytest-playwright not present, skipping.")
+          PY
 
       - name: Run pytest
         run: |
