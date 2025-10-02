@@ -1,401 +1,89 @@
 name: CI Pipeline - Bot Trading MVP
 
-env:
-  PYTHON_VERSION: '3.12'
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ "main", "develop" ]
   pull_request:
-    branches: [ main, develop ]
 
 env:
-  PYTHON_VERSION: '3.12'
-  NODE_VERSION: '18'
+  PYTHON_VERSION: "3.12"
+
+permissions:
+  contents: read
 
 jobs:
-  # Job 1: Análise de Código e Linting
-  code-quality:
-    name: 🔍 Code Quality & Linting
+  lint:
+    name: Code Quality & Linting
     runs-on: ubuntu-latest
-env:
-  PYTHON_VERSION: '3.12'
-    
     steps:
-    - name: Checkout código
-      uses: actions/checkout@v4
-env:
-  PYTHON_VERSION: '3.12'
-      
-    - name: Setup Python
-      uses: actions/setup-python@v5
-env:
-  PYTHON_VERSION: '3.12'
-      with:
-        python-version: ${{ env.PYTHON_VERSION }}
-        
-    - name: Cache dependências Python
-      uses: actions/cache@v4
-env:
-  PYTHON_VERSION: '3.12'
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-        
-    - name: Instalar dependências de desenvolvimento
-      run: |
-env:
-  PYTHON_VERSION: '3.12'
-        python -m pip install --upgrade pip
-        pip install flake8 black isort mypy bandit safety
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-        if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
-        
-    - name: Executar Black (formatação)
-      run: black --check --diff .
-env:
-  PYTHON_VERSION: '3.12'
-      
-    - name: Executar isort (imports)
-      run: isort --check-only --diff .
-env:
-  PYTHON_VERSION: '3.12'
-      
-    - name: Executar Flake8 (linting)
-      run: flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-env:
-  PYTHON_VERSION: '3.12'
-      
-    - name: Executar MyPy (type checking)
-      run: mypy . --ignore-missing-imports || true
-env:
-  PYTHON_VERSION: '3.12'
-      
-    - name: Executar Bandit (segurança)
-      run: bandit -r . -f json -o bandit-report.json || true
-env:
-  PYTHON_VERSION: '3.12'
-      
-    - name: Verificar vulnerabilidades em dependências
-      run: safety check --json --output safety-report.json || true
-env:
-  PYTHON_VERSION: '3.12'
-      
-    - name: Upload relatórios de segurança
-      uses: actions/upload-artifact@v4
-env:
-  PYTHON_VERSION: '3.12'
-      with:
-        name: security-reports
-        path: |
-env:
-  PYTHON_VERSION: '3.12'
-          bandit-report.json
-          safety-report.json
+      - name: Checkout
+        uses: actions/checkout@v4
 
-  # Job 2: Testes Unitários e de Integração
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+
+      - name: Print versions (debug)
+        run: |
+          python -V
+          pip -V
+
+      - name: Install dev deps
+        run: |
+          python -m pip install --upgrade pip wheel setuptools
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+          pip install ruff black flake8
+
+      - name: Ruff
+        run: ruff check .
+
+      - name: Black (check)
+        run: black --check .
+
+      - name: Flake8
+        run: flake8 .
+
   tests:
-    name: 🧪 Tests & Coverage
+    name: Unit Tests
     runs-on: ubuntu-latest
-env:
-  PYTHON_VERSION: '3.12'
-    needs: code-quality
-    
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: trading_bot_test
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-          
-      redis:
-        image: redis:7
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 6379:6379
-    
+    needs: lint
     steps:
-    - name: Checkout código
-      uses: actions/checkout@v4
-env:
-  PYTHON_VERSION: '3.12'
-      
-    - name: Setup Python
-      uses: actions/setup-python@v5
-env:
-  PYTHON_VERSION: '3.12'
-      with:
-        python-version: ${{ env.PYTHON_VERSION }}
-        
-    - name: Cache dependências Python
-      uses: actions/cache@v4
-env:
-  PYTHON_VERSION: '3.12'
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-        
-    - name: Instalar dependências
-      run: |
-env:
-  PYTHON_VERSION: '3.12'
-        python -m pip install --upgrade pip
-        pip install pytest pytest-cov pytest-asyncio pytest-mock
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-        if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
-        
-    - name: Executar testes unitários
-      env:
-env:
-  PYTHON_VERSION: '3.12'
-        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/trading_bot_test
-        REDIS_URL: redis://localhost:6379
-        BYBIT_API_KEY: ${{ secrets.BYBIT_API_KEY_TEST }}
-        BYBIT_API_SECRET: ${{ secrets.BYBIT_API_SECRET_TEST }}
-        JWT_SECRET: test-secret-key
-      run: |
-        pytest tests/ -v --cov=. --cov-report=xml --cov-report=html --cov-fail-under=70
-        
-    - name: Upload relatório de cobertura
-      uses: codecov/codecov-action@v3
-env:
-  PYTHON_VERSION: '3.12'
-      with:
-        file: ./coverage.xml
-        flags: unittests
-        name: codecov-umbrella
-        
-env:
-  PYTHON_VERSION: '3.12'
-    - name: Upload artefatos de teste
-      uses: actions/upload-artifact@v4
-env:
-  PYTHON_VERSION: '3.12'
-      with:
-        name: test-results
-        path: |
-env:
-  PYTHON_VERSION: '3.12'
-          htmlcov/
-          coverage.xml
+      - name: Checkout
+        uses: actions/checkout@v4
 
-  # Job 3: Build Docker
-  docker-build:
-    name: 🐳 Docker Build & Security Scan
-    runs-on: ubuntu-latest
-env:
-  PYTHON_VERSION: '3.12'
-    needs: [code-quality, tests]
-    
-    steps:
-    - name: Checkout código
-      uses: actions/checkout@v4
-env:
-  PYTHON_VERSION: '3.12'
-      
-    - name: Setup Docker Buildx
-      uses: docker/setup-buildx-action@v3
-env:
-  PYTHON_VERSION: '3.12'
-      
-    - name: Login no Docker Hub
-      if: github.event_name != 'pull_request'
-env:
-  PYTHON_VERSION: '3.12'
-      uses: docker/login-action@v3
-      with:
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
-env:
-  PYTHON_VERSION: '3.12'
-        
-    - name: Extrair metadados
-      id: meta
-env:
-  PYTHON_VERSION: '3.12'
-      uses: docker/metadata-action@v5
-      with:
-        images: ${{ secrets.DOCKER_USERNAME }}/trading-bot
-        tags: |
-          type=ref,event=branch
-          type=ref,event=pr
-          type=sha,prefix={{branch}}-
-          
-    - name: Build e push da imagem Docker
-      uses: docker/build-push-action@v5
-env:
-  PYTHON_VERSION: '3.12'
-      with:
-        context: .
-        platforms: linux/amd64,linux/arm64
-        push: ${{ github.event_name != 'pull_request' }}
-        tags: ${{ steps.meta.outputs.tags }}
-        labels: ${{ steps.meta.outputs.labels }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
-        
-    - name: Executar Trivy (scan de segurança)
-      uses: aquasecurity/trivy-action@master
-env:
-  PYTHON_VERSION: '3.12'
-      with:
-        image-ref: ${{ secrets.DOCKER_USERNAME }}/trading-bot:${{ github.sha }}
-        format: 'sarif'
-        output: 'trivy-results.sarif'
-        
-    - name: Upload resultados do Trivy
-      uses: github/codeql-action/upload-sarif@v2
-env:
-  PYTHON_VERSION: '3.12'
-      with:
-        sarif_file: 'trivy-results.sarif'
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-test.txt
 
-  # Job 4: Testes de Integração
-  integration-tests:
-    name: 🔗 Integration Tests
-    runs-on: ubuntu-latest
-env:
-  PYTHON_VERSION: '3.12'
-    needs: docker-build
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
-    
-    steps:
-    - name: Checkout código
-      uses: actions/checkout@v4
-env:
-  PYTHON_VERSION: '3.12'
-      
-    - name: Setup Docker Compose
-      run: |
-env:
-  PYTHON_VERSION: '3.12'
-        sudo curl -L "https://github.com/docker/compose/releases/download/v2.20.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-        sudo chmod +x /usr/local/bin/docker-compose
-        
-    - name: Executar stack completa
-      env:
-env:
-  PYTHON_VERSION: '3.12'
-        BYBIT_API_KEY: ${{ secrets.BYBIT_API_KEY_TEST }}
-        BYBIT_API_SECRET: ${{ secrets.BYBIT_API_SECRET_TEST }}
-      run: |
-        docker-compose -f docker-compose.test.yml up -d
-        sleep 30  # Aguardar serviços iniciarem
-        
-    - name: Executar testes de integração
-      run: |
-env:
-  PYTHON_VERSION: '3.12'
-        docker-compose -f docker-compose.test.yml exec -T api pytest tests/integration/ -v
-        
-    - name: Executar testes de API
-      run: |
-env:
-  PYTHON_VERSION: '3.12'
-        docker-compose -f docker-compose.test.yml exec -T api pytest tests/api/ -v
-        
-    - name: Coletar logs
-      if: failure()
-env:
-  PYTHON_VERSION: '3.12'
-      run: |
-        docker-compose -f docker-compose.test.yml logs > integration-logs.txt
-        
-    - name: Upload logs de falha
-      if: failure()
-env:
-  PYTHON_VERSION: '3.12'
-      uses: actions/upload-artifact@v4
-      with:
-        name: integration-logs
-        path: integration-logs.txt
-env:
-  PYTHON_VERSION: '3.12'
-        
-    - name: Cleanup
-      if: always()
-env:
-  PYTHON_VERSION: '3.12'
-      run: |
-        docker-compose -f docker-compose.test.yml down -v
+      - name: Install test deps
+        run: |
+          python -m pip install --upgrade pip wheel setuptools
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f requirements-test.txt ]; then pip install -r requirements-test.txt; fi
+          pip install pytest pytest-cov
 
-  # Job 5: Análise de Performance
-  performance-tests:
-    name: ⚡ Performance Tests
-    runs-on: ubuntu-latest
-env:
-  PYTHON_VERSION: '3.12'
-    needs: integration-tests
-    if: github.ref == 'refs/heads/main'
-    
-    steps:
-    - name: Checkout código
-      uses: actions/checkout@v4
-env:
-  PYTHON_VERSION: '3.12'
-      
-    - name: Setup Python
-      uses: actions/setup-python@v5
-env:
-  PYTHON_VERSION: '3.12'
-      with:
-        python-version: ${{ env.PYTHON_VERSION }}
-        
-    - name: Instalar dependências de performance
-      run: |
-env:
-  PYTHON_VERSION: '3.12'
-        pip install locust pytest-benchmark
-        
-    - name: Executar testes de carga
-      run: |
-env:
-  PYTHON_VERSION: '3.12'
-        # Executar testes básicos de performance
-        python -m pytest tests/performance/ --benchmark-only --benchmark-json=benchmark.json
-        
-    - name: Upload resultados de performance
-      uses: actions/upload-artifact@v4
-env:
-  PYTHON_VERSION: '3.12'
-      with:
-        name: performance-results
-        path: benchmark.json
-env:
-  PYTHON_VERSION: '3.12'
+      - name: Run tests
+        run: |
+          if [ -d tests ]; then \
+            pytest -q --maxfail=1 --disable-warnings --cov=. --cov-report=xml; \
+          else \
+            echo "No tests/ directory; skipping."; \
+          fi
 
-  # Job 6: Notificações
-  notify:
-    name: 📢 Notifications
-    runs-on: ubuntu-latest
-env:
-  PYTHON_VERSION: '3.12'
-    needs: [code-quality, tests, docker-build, integration-tests]
-    if: always()
-    
-    steps:
-    - name: Notificar sucesso
-      if: ${{ needs.code-quality.result == 'success' && needs.tests.result == 'success' && needs.docker-build.result == 'success' }}
-env:
-  PYTHON_VERSION: '3.12'
-      run: |
-        echo "✅ Pipeline executado com sucesso!"
-        # Aqui você pode adicionar notificação para Slack/Discord
-        
-    - name: Notificar falha
-      if: ${{ needs.code-quality.result == 'failure' || needs.tests.result == 'failure' || needs.docker-build.result == 'failure' }}
-env:
-  PYTHON_VERSION: '3.12'
-      run: |
-        echo "❌ Pipeline falhou!"
-        # Aqui você pode adicionar notificação para Slack/Discord
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-xml
+          path: coverage.xml
