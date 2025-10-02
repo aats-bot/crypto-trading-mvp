@@ -6,100 +6,119 @@ on:
   pull_request:
     branches: [ main ]
   schedule:
-    # Executar verificações de segurança diariamente às 2:00 AM UTC
     - cron: '0 2 * * *'
+
+# Permissões mínimas p/ subir SARIF e ler conteúdo
+permissions:
+  actions: read
+  contents: read
+  security-events: write
 
 jobs:
   # Job 1: Análise de Dependências
   dependency-check:
     name: 🔒 Dependency Security Scan
     runs-on: ubuntu-latest
-    
+
     steps:
-    - name: Checkout código
-      uses: actions/checkout@v4
-      
-    - name: Setup Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.12'
-        
-    - name: Instalar ferramentas de segurança
-      run: |
-        python -m pip install --upgrade pip
-        pip install safety bandit semgrep
-        
-    - name: Verificar vulnerabilidades conhecidas
-      run: |
-        safety check --json --output safety-report.json || true
-        
-    - name: Análise de código com Bandit
-      run: |
-        bandit -r . -f json -o bandit-report.json || true
-        
-    - name: Análise com Semgrep
-      run: |
-        semgrep --config=auto --json --output=semgrep-report.json . || true
-        
-    - name: Upload relatórios de segurança
-      uses: actions/upload-artifact@v4
-      with:
-        name: security-reports
-        path: |
-          safety-report.json
-          bandit-report.json
-          semgrep-report.json
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Print Python & pip (debug)
+        run: |
+          python -V
+          pip -V
+
+      - name: Instalar ferramentas de segurança
+        run: |
+          python -m pip install --upgrade pip
+          pip install safety bandit
+
+      - name: Verificar vulnerabilidades conhecidas (Safety)
+        run: |
+          safety check --json --output safety-report.json || true
+
+      - name: Análise de código com Bandit
+        run: |
+          bandit -r . -f json -o bandit-report.json || true
+
+      # Semgrep via action oficial (mais estável do que pip)
+      - name: Semgrep SAST
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: auto
+          generateSarif: true
+          sarifFile: semgrep-report.sarif
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload relatórios de segurança
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-reports
+          path: |
+            safety-report.json
+            bandit-report.json
+            semgrep-report.sarif
 
   # Job 2: Análise de Secrets
   secret-scan:
     name: 🔐 Secret Detection
     runs-on: ubuntu-latest
-    
+
     steps:
-    - name: Checkout código
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0  # Fetch full history para análise completa
-        
-    - name: Executar GitLeaks
-      uses: gitleaks/gitleaks-action@v2
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+      - name: Checkout código
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Executar GitLeaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+        # with:
+        #   args: "--verbose"  # opcional
 
   # Job 3: Análise de Container
   container-security:
     name: 🐳 Container Security Scan
     runs-on: ubuntu-latest
-    
+
     steps:
-    - name: Checkout código
-      uses: actions/checkout@v4
-      
-    - name: Build imagem Docker
-      run: |
-        docker build -t trading-bot:security-scan .
-        
-    - name: Executar Trivy (vulnerabilidades)
-      uses: aquasecurity/trivy-action@master
-      with:
-        image-ref: 'trading-bot:security-scan'
-        format: 'sarif'
-        output: 'trivy-results.sarif'
-        
-    - name: Executar Trivy (configuração)
-      uses: aquasecurity/trivy-action@master
-      with:
-        scan-type: 'config'
-        format: 'sarif'
-        output: 'trivy-config-results.sarif'
-        
-    - name: Upload resultados do Trivy para GitHub Security
-      uses: github/codeql-action/upload-sarif@v2
-      with:
-        sarif_file: |
-          trivy-results.sarif
-          trivy-config-results.sarif
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Build imagem Docker
+        run: |
+          docker build -t trading-bot:security-scan .
+
+      - name: Executar Trivy (vulnerabilidades)
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: 'trading-bot:security-scan'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          ignore-unfixed: true
+
+      - name: Executar Trivy (configuração)
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          scan-type: 'config'
+          format: 'sarif'
+          output: 'trivy-config-results.sarif'
+
+      - name: Upload resultados do Trivy para GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: |
+            trivy-results.sarif
+            trivy-config-results.sarif
 
   # Job 4: Análise de Código Estática (CodeQL)
   codeql-analysis:
@@ -109,143 +128,107 @@ jobs:
       actions: read
       contents: read
       security-events: write
-      
+
     strategy:
       fail-fast: false
       matrix:
         language: [ 'python', 'javascript' ]
-        
+
     steps:
-    - name: Checkout código
-      uses: actions/checkout@v4
-      
-    - name: Inicializar CodeQL
-      uses: github/codeql-action/init@v2
-      with:
-        languages: ${{ matrix.language }}
-        
-    - name: Autobuild
-      uses: github/codeql-action/autobuild@v2
-      
-    - name: Executar análise CodeQL
-      uses: github/codeql-action/analyze@v2
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Inicializar CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Executar análise CodeQL
+        uses: github/codeql-action/analyze@v3
 
   # Job 5: Verificação de Licenças
   license-check:
     name: 📄 License Compliance
     runs-on: ubuntu-latest
-    
+
     steps:
-    - name: Checkout código
-      uses: actions/checkout@v4
-      
-    - name: Setup Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.12'
-        
-    - name: Instalar pip-licenses
-      run: |
-        pip install pip-licenses
-        
-    - name: Verificar licenças das dependências
-      run: |
-        if [ -f requirements.txt ]; then
-          pip install -r requirements.txt
-          pip-licenses --format=json --output-file=licenses-report.json
-          pip-licenses --format=plain-vertical
-        fi
-        
-    - name: Verificar licenças problemáticas
-      run: |
-        # Lista de licenças não permitidas
-        FORBIDDEN_LICENSES="GPL-3.0,AGPL-3.0,LGPL-3.0"
-        
-        if [ -f licenses-report.json ]; then
-          python -c "
-import json
-import sys
+      - name: Checkout código
+        uses: actions/checkout@v4
 
-with open('licenses-report.json', 'r') as f:
-    licenses = json.load(f)
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
 
-forbidden = ['GPL-3.0', 'AGPL-3.0', 'LGPL-3.0']
-issues = []
+      - name: Instalar pip-licenses
+        run: |
+          python -m pip install --upgrade pip
+          pip install pip-licenses
 
-for pkg in licenses:
-    if pkg['License'] in forbidden:
-        issues.append(f\"{pkg['Name']} ({pkg['License']})\")
+      - name: Verificar licenças das dependências
+        run: |
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+            pip-licenses --format=json --output-file=licenses-report.json
+            pip-licenses --format=plain-vertical
+          fi
 
-if issues:
-    print('❌ Licenças problemáticas encontradas:')
-    for issue in issues:
-        print(f'  - {issue}')
-    sys.exit(1)
-else:
-    print('✅ Todas as licenças são compatíveis')
-"
-        fi
-        
-    - name: Upload relatório de licenças
-      uses: actions/upload-artifact@v4
-      with:
-        name: license-report
-        path: licenses-report.json
+      - name: Verificar licenças problemáticas
+        run: |
+          python - <<'PY'
+import json, sys, os
+forbidden = {'GPL-3.0','AGPL-3.0','LGPL-3.0'}
+if os.path.exists('licenses-report.json'):
+    with open('licenses-report.json','r') as f:
+        licenses = json.load(f)
+    issues = [f"{p['Name']} ({p['License']})" for p in licenses if p.get('License') in forbidden]
+    if issues:
+        print('❌ Licenças problemáticas encontradas:')
+        for i in issues: print('  -', i)
+        sys.exit(1)
+    else:
+        print('✅ Todas as licenças são compatíveis')
+PY
+
+      - name: Upload relatório de licenças
+        uses: actions/upload-artifact@v4
+        with:
+          name: license-report
+          path: licenses-report.json
 
   # Job 6: Verificação de Configuração
   config-security:
     name: ⚙️ Configuration Security
     runs-on: ubuntu-latest
-    
+
     steps:
-    - name: Checkout código
-      uses: actions/checkout@v4
-      
-    - name: Verificar arquivos de configuração sensíveis
-      run: |
-        echo "🔍 Verificando configurações de segurança..."
-        
-        # Verificar se há arquivos sensíveis commitados
-        SENSITIVE_FILES=".env .env.local .env.production config.ini secrets.json"
-        
-        for file in $SENSITIVE_FILES; do
-          if [ -f "$file" ]; then
-            echo "⚠️  Arquivo sensível encontrado: $file"
-            echo "   Conteúdo:"
-            head -5 "$file"
-            echo "   ..."
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Verificar arquivos de configuração sensíveis
+        run: |
+          echo "🔍 Verificando configurações de segurança..."
+          SENSITIVE_FILES=".env .env.local .env.production config.ini secrets.json"
+          for file in $SENSITIVE_FILES; do
+            if [ -f "$file" ]; then
+              echo "⚠️  Arquivo sensível encontrado: $file"
+              head -5 "$file" || true
+            fi
+          done
+          if [ -f "Dockerfile" ]; then
+            echo "🐳 Verificando Dockerfile..."
+            grep -q "USER root" Dockerfile && echo "⚠️  Dockerfile executa como root" || true
+            grep -q "ADD http" Dockerfile && echo "⚠️  Dockerfile usa ADD com HTTP (inseguro)" || true
+            grep -q "RUN.*sudo" Dockerfile && echo "⚠️  Dockerfile usa sudo" || true
           fi
-        done
-        
-        # Verificar Dockerfile por práticas inseguras
-        if [ -f "Dockerfile" ]; then
-          echo "🐳 Verificando Dockerfile..."
-          
-          if grep -q "USER root" Dockerfile; then
-            echo "⚠️  Dockerfile executa como root"
+          if [ -f "docker-compose.yml" ]; then
+            echo "🐳 Verificando docker-compose.yml..."
+            grep -q "privileged: true" docker-compose.yml && echo "⚠️  Container com privilégios elevados" || true
+            grep -q "network_mode.*host" docker-compose.yml && echo "⚠️  Container usando network host" || true
           fi
-          
-          if grep -q "ADD http" Dockerfile; then
-            echo "⚠️  Dockerfile usa ADD com HTTP (inseguro)"
-          fi
-          
-          if grep -q "RUN.*sudo" Dockerfile; then
-            echo "⚠️  Dockerfile usa sudo"
-          fi
-        fi
-        
-        # Verificar docker-compose.yml
-        if [ -f "docker-compose.yml" ]; then
-          echo "🐳 Verificando docker-compose.yml..."
-          
-          if grep -q "privileged: true" docker-compose.yml; then
-            echo "⚠️  Container com privilégios elevados"
-          fi
-          
-          if grep -q "network_mode.*host" docker-compose.yml; then
-            echo "⚠️  Container usando network host"
-          fi
-        fi
 
   # Job 7: Relatório Consolidado
   security-report:
@@ -253,73 +236,64 @@ else:
     runs-on: ubuntu-latest
     needs: [dependency-check, secret-scan, container-security, license-check, config-security]
     if: always()
-    
+
     steps:
-    - name: Download todos os artefatos
-      uses: actions/download-artifact@v4
-      
-    - name: Gerar relatório consolidado
-      run: |
-        echo "# 🔒 Relatório de Segurança - $(date)" > security-summary.md
-        echo "" >> security-summary.md
-        
-        echo "## 📊 Status dos Jobs" >> security-summary.md
-        echo "- Dependency Check: ${{ needs.dependency-check.result }}" >> security-summary.md
-        echo "- Secret Scan: ${{ needs.secret-scan.result }}" >> security-summary.md
-        echo "- Container Security: ${{ needs.container-security.result }}" >> security-summary.md
-        echo "- License Check: ${{ needs.license-check.result }}" >> security-summary.md
-        echo "- Config Security: ${{ needs.config-security.result }}" >> security-summary.md
-        echo "" >> security-summary.md
-        
-        # Processar relatórios se existirem
-        if [ -d "security-reports" ]; then
-          echo "## 🔍 Vulnerabilidades Encontradas" >> security-summary.md
-          
-          if [ -f "security-reports/safety-report.json" ]; then
-            echo "### Safety (Dependências Python)" >> security-summary.md
-            python -c "
-import json
+      - name: Download todos os artefatos
+        uses: actions/download-artifact@v4
+
+      - name: Gerar relatório consolidado
+        run: |
+          echo "# 🔒 Relatório de Segurança - $(date)" > security-summary.md
+          echo "" >> security-summary.md
+          echo "## 📊 Status dos Jobs" >> security-summary.md
+          echo "- Dependency Check: ${{ needs.dependency-check.result }}" >> security-summary.md
+          echo "- Secret Scan: ${{ needs.secret-scan.result }}" >> security-summary.md
+          echo "- Container Security: ${{ needs.container-security.result }}" >> security-summary.md
+          echo "- License Check: ${{ needs.license-check.result }}" >> security-summary.md
+          echo "- Config Security: ${{ needs.config-security.result }}" >> security-summary.md
+          echo "" >> security-summary.md
+          if [ -d "security-reports" ]; then
+            echo "## 🔍 Vulnerabilidades Encontradas" >> security-summary.md
+            if [ -f "security-reports/safety-report.json" ]; then
+              python - <<'PY' >> security-summary.md
+import json, sys
 try:
-    with open('security-reports/safety-report.json', 'r') as f:
-        data = json.load(f)
+    data = json.load(open('security-reports/safety-report.json'))
     if data:
-        print(f'- {len(data)} vulnerabilidades encontradas')
-        for vuln in data[:5]:  # Mostrar apenas as 5 primeiras
-            print(f'  - {vuln.get(\"advisory\", \"N/A\")}')
+        print(f"- {len(data)} vulnerabilidades encontradas")
+        for vuln in data[:5]:
+            print(f"  - {vuln.get('advisory','N/A')}")
     else:
-        print('- Nenhuma vulnerabilidade encontrada')
-except:
-    print('- Erro ao processar relatório')
-" >> security-summary.md
+        print("- Nenhuma vulnerabilidade encontrada")
+except Exception as e:
+    print(f"- Erro ao processar relatório: {e}")
+PY
+            fi
           fi
-        fi
-        
-        echo "" >> security-summary.md
-        echo "## 🎯 Recomendações" >> security-summary.md
-        echo "1. Revisar e corrigir vulnerabilidades de alta severidade" >> security-summary.md
-        echo "2. Atualizar dependências com vulnerabilidades conhecidas" >> security-summary.md
-        echo "3. Implementar rotação regular de secrets" >> security-summary.md
-        echo "4. Configurar alertas de segurança automáticos" >> security-summary.md
-        
-        cat security-summary.md
-        
-    - name: Upload relatório consolidado
-      uses: actions/upload-artifact@v4
-      with:
-        name: security-summary
-        path: security-summary.md
-        
-    - name: Comentar no PR (se aplicável)
-      if: github.event_name == 'pull_request'
-      uses: actions/github-script@v6
-      with:
-        script: |
-          const fs = require('fs');
-          const summary = fs.readFileSync('security-summary.md', 'utf8');
-          
-          github.rest.issues.createComment({
-            issue_number: context.issue.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            body: summary
-          });
+          echo "" >> security-summary.md
+          echo "## 🎯 Recomendações" >> security-summary.md
+          echo "1. Revisar e corrigir vulnerabilidades de alta severidade" >> security-summary.md
+          echo "2. Atualizar dependências com vulnerabilidades conhecidas" >> security-summary.md
+          echo "3. Implementar rotação regular de secrets" >> security-summary.md
+          echo "4. Configurar alertas de segurança automáticos" >> security-summary.md
+          cat security-summary.md
+
+      - name: Upload relatório consolidado
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-summary
+          path: security-summary.md
+
+      - name: Comentar no PR (se aplicável)
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const summary = fs.readFileSync('security-summary.md', 'utf8');
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: summary
+            });
