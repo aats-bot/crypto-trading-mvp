@@ -42,3 +42,4 @@ vulture==2.10
 # Git hooks
 gitpython==3.1.40
 
+prometheus-client>=0.20,<1

@@ -33,3 +33,4 @@ coverage>=7.0.0
 # Note: memray is not compatible with Windows
 # Note: pkg-config is not required for Windows builds
 
+prometheus-client>=0.20,<1
