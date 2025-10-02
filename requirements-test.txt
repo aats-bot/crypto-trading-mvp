@@ -140,9 +140,3 @@ py-spy==0.4.1
 # Instala no CI (Linux/macOS) automaticamente:
 pytest-memray==1.8.0 ; sys_platform != "win32"
 
-# =========================
-# Streamlit / App
-# =========================
-streamlit==1.44.1
-gitpython==3.1.44
-pyarrow==19.0.1
