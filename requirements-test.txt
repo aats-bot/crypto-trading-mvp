@@ -69,13 +69,12 @@ wrapt==1.17.3
 # Data / Viz
 # (pinned para casar com numba/llvmlite)
 # =========================
-numpy==2.3.3
-pandas==2.3.3
-matplotlib==3.10.1
-plotly==6.0.1
 pandas-ta==0.4.71b0
 numba==0.61.2
 llvmlite==0.44.0
+numpy==2.2.6
+pandas==2.3.3
+matplotlib==3.10.1
 
 # =========================
 # API / Web
