@@ -5,6 +5,11 @@ Implementação do indicador EMA (Exponential Moving Average)
 import pandas as pd
 import numpy as np
 from .base_indicator import BaseIndicator
+from ta.trend import EMAIndicator as _EMAIndicator
+
+class EMAIndicator(_EMAIndicator):
+    """Compat shim: expõe EMAIndicator em src.strategy.indicators.ema"""
+    pass
 
 class EMA(BaseIndicator):
     """Exponential Moving Average"""
