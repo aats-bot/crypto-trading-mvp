@@ -1,55 +1,27 @@
-"""
-Implementação do indicador EMA (Exponential Moving Average)
-"""
-
+from __future__ import annotations
 import pandas as pd
-import numpy as np
-from .base_indicator import BaseIndicator
-from ta.trend import EMAIndicator as _EMAIndicator
 
-class EMAIndicator(_EMAIndicator):
-    """Compat shim: expõe EMAIndicator em src.strategy.indicators.ema"""
-    pass
+class EMAIndicator:
+    def __init__(self, close: pd.Series, window: int = 12, adjust: bool = False):
+        self.close = close
+        self.window = window
+        self.adjust = adjust
 
-class EMA(BaseIndicator):
-    """Exponential Moving Average"""
-    
-    def __init__(self, config):
-        """
-        Inicializa EMA
-        
-        Args:
-            config: Dicionário com 'period' (período da EMA)
-        """
-        super().__init__(config)
-        self.period = config.get('period', 20)
-        
-    def calculate(self, data: pd.DataFrame) -> pd.Series:
-        """
-        Calcula EMA
-        
-        Args:
-            data: DataFrame com dados OHLCV
-            
-        Returns:
-            Série com valores da EMA
-        """
-        if not self.validate_data(data):
-            raise ValueError("Dados inválidos para cálculo da EMA")
-            
-        return data['close'].ewm(span=self.period, adjust=False).mean()
+    def ema(self) -> pd.Series:
+        return self.close.ewm(span=self.window, adjust=self.adjust).mean()
 
-class EMA100(EMA):
-    """EMA de 100 períodos para filtro de tendência"""
-    
-    def __init__(self, config):
-        config['period'] = 100
-        super().__init__(config)
+# Classes compatíveis esperadas pelos testes
+class EMA:
+    def __init__(self, close: pd.Series, window: int = 12, adjust: bool = False):
+        self._impl = EMAIndicator(close, window, adjust)
+
+    def calculate(self) -> pd.Series:
+        return self._impl.ema()
 
 class EMA20(EMA):
-    """EMA de 20 períodos para validação multi-timeframe"""
-    
-    def __init__(self, config):
-        config['period'] = 20
-        super().__init__(config)
+    def __init__(self, close: pd.Series, adjust: bool = False):
+        super().__init__(close, window=20, adjust=adjust)
 
+class EMA100(EMA):
+    def __init__(self, close: pd.Series, adjust: bool = False):
+        super().__init__(close, window=100, adjust=adjust)

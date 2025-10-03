@@ -401,3 +401,7 @@ class BybitAccountManager(AccountManager):
             logger.error(f"Error closing position for {symbol}: {e}")
             raise
 
+
+
+# compat alias para testes
+BybitProvider = BybitMarketDataProvider

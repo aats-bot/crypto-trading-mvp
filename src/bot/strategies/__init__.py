@@ -1,8 +1,8 @@
+from __future__ import annotations
 """# src/bot/strategies/__init__.py
 Trading strategies module
 """
 from .ppp_vishva_strategy import PPPVishvaStrategy
-from __future__ import annotations
 from importlib import import_module
 from pathlib import Path
 from types import ModuleType
