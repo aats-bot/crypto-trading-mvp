@@ -5,3 +5,4 @@ from .atr import ATRIndicator, ATR
 from .ut_bot import UTBotIndicator
 from .ewo import EWOIndicator, EWO
 from .rsi import RSIIndicator, RSI
+from .stoch_rsi import StochRSIIndicator, StochRSI

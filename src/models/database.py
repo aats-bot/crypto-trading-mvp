@@ -1,3 +1,14 @@
+import re
+
+def ensure_asyncpg(url: str) -> str:
+    u = url.strip().replace('postgres://', 'postgresql://')
+    if u.startswith('postgresql+asyncpg://'):
+        return u
+    u = re.sub(r'^postgresql(?:\+psycopg2|\+psycopg)?://', 'postgresql+asyncpg://', u)
+    if u.startswith('postgresql://'):
+        u = 'postgresql+asyncpg://' + u[len('postgresql://'):]
+    return u
+
 from distutils.util import strtobool  # type: ignore
 
 def _to_bool(v):
@@ -29,7 +40,7 @@ Base = declarative_base()
 
 # Async engine for async operations
 async_engine = create_async_engine(
-    settings.database_url,
+    ensure_asyncpg(settings.database_url),
     echo=_to_bool(settings.debug),
     pool_pre_ping=True,
     pool_recycle=300
