@@ -20,7 +20,7 @@ Base = declarative_base()
 # Async engine for async operations
 async_engine = create_async_engine(
     settings.database_url,
-    echo=settings.debug,
+    echo=_to_bool(settings.debug),
     pool_pre_ping=True,
     pool_recycle=300
 )
@@ -28,7 +28,7 @@ async_engine = create_async_engine(
 # Sync engine for migrations and sync operations
 sync_engine = create_engine(
     settings.database_url_sync,
-    echo=settings.debug,
+    echo=_to_bool(settings.debug),
     pool_pre_ping=True,
     pool_recycle=300
 )
