@@ -1,3 +1,13 @@
+from distutils.util import strtobool  # type: ignore
+
+def _to_bool(v):
+    if isinstance(v, bool):
+        return v
+    try:
+        return bool(strtobool(str(v)))
+    except Exception:
+        return False
+
 """
 Database configuration and connection
 """
