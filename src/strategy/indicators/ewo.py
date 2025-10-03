@@ -1,64 +1,26 @@
-"""
-Implementação do indicador EWO (Elliott Wave Oscillator)
-"""
-
+from __future__ import annotations
 import pandas as pd
-import numpy as np
-from .base_indicator import BaseIndicator
 
-class EWO(BaseIndicator):
-    """Elliott Wave Oscillator (momentum indicator)"""
-    
-    def __init__(self, config):
-        """
-        Inicializa EWO
-        
-        Args:
-            config: Dicionário com 'fast_period' e 'slow_period'
-        """
-        super().__init__(config)
-        self.fast_period = config.get('fast_period', 5)
-        self.slow_period = config.get('slow_period', 35)
-        
-    def calculate(self, data: pd.DataFrame) -> pd.Series:
-        """
-        Calcula EWO
-        
-        Args:
-            data: DataFrame com dados OHLCV
-            
-        Returns:
-            Série com valores do EWO
-        """
-        if not self.validate_data(data):
-            raise ValueError("Dados inválidos para cálculo do EWO")
-            
-        # Calcular SMAs
-        sma_fast = data['close'].rolling(window=self.fast_period).mean()
-        sma_slow = data['close'].rolling(window=self.slow_period).mean()
-        
-        # EWO = SMA_fast - SMA_slow
-        ewo = sma_fast - sma_slow
-        
-        return ewo
-    
-    def get_momentum_signal(self, data: pd.DataFrame, threshold: float = 0.0) -> int:
-        """
-        Obtém sinal de momentum baseado no EWO
-        
-        Args:
-            data: DataFrame com dados OHLCV
-            threshold: Limiar para determinar sinal
-            
-        Returns:
-            1 para momentum positivo, -1 para negativo, 0 para neutro
-        """
-        ewo_values = self.calculate(data)
-        if len(ewo_values) > 0:
-            current_ewo = ewo_values.iloc[-1]
-            if current_ewo > threshold:
-                return 1
-            elif current_ewo < -threshold:
-                return -1
-        return 0
+class EWOIndicator:
+    """
+    Elliott Wave Oscillator (EWO) = EMA(fast) - EMA(slow)
+    Por padrão, fast=5, slow=35 (valores comuns).
+    """
+    def __init__(self, close: pd.Series, fast: int = 5, slow: int = 35, adjust: bool = False):
+        self.close = close
+        self.fast = fast
+        self.slow = slow
+        self.adjust = adjust
 
+    def ewo(self) -> pd.Series:
+        fast_ema = self.close.ewm(span=self.fast, adjust=self.adjust).mean()
+        slow_ema = self.close.ewm(span=self.slow, adjust=self.adjust).mean()
+        return fast_ema - slow_ema
+
+# wrapper simplificado usado por alguns testes
+class EWO:
+    def __init__(self, close: pd.Series, fast: int = 5, slow: int = 35, adjust: bool = False):
+        self._ind = EWOIndicator(close, fast=fast, slow=slow, adjust=adjust)
+
+    def ewo(self) -> pd.Series:
+        return self._ind.ewo()

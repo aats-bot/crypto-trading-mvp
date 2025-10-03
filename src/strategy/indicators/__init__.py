@@ -3,3 +3,4 @@ from .rsi import RSIIndicator  # arquivo já criado por você
 from .rsi import RSIIndicator
 from .atr import ATRIndicator, ATR
 from .ut_bot import UTBotIndicator
+from .ewo import EWOIndicator, EWO
