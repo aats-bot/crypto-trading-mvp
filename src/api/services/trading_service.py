@@ -6,7 +6,7 @@ Localização: /src/api/services/trading_service.py
 import asyncio
 import logging
 from typing import Dict, Any, List, Optional, Tuple
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from decimal import Decimal
 import json
 
@@ -53,7 +53,7 @@ class TradingService:
                     "symbols": [],
                     "total_trades_today": 0,
                     "account_balance": {},
-                    "last_update": datetime.utcnow().isoformat()
+                    "last_update": datetime.now(UTC).isoformat()
                 }
             
             # Obter informações do bot
@@ -62,7 +62,7 @@ class TradingService:
                 "uptime": bot.get_uptime(),
                 "strategy": bot.strategy.__class__.__name__ if bot.strategy else None,
                 "symbols": bot.symbols,
-                "last_update": datetime.utcnow().isoformat()
+                "last_update": datetime.now(UTC).isoformat()
             }
             
             # Obter posições abertas
@@ -161,7 +161,7 @@ class TradingService:
             self.active_bots[client_id] = bot
             self.bot_status[client_id] = {
                 "status": "running",
-                "started_at": datetime.utcnow(),
+                "started_at": datetime.now(UTC),
                 "strategy": config.strategy,
                 "symbols": bot.symbols
             }
@@ -211,7 +211,7 @@ class TradingService:
             # Atualizar status
             if client_id in self.bot_status:
                 self.bot_status[client_id]["status"] = "stopped"
-                self.bot_status[client_id]["stopped_at"] = datetime.utcnow()
+                self.bot_status[client_id]["stopped_at"] = datetime.now(UTC)
             
             logger.info(f"Bot parado para cliente {client_id}")
             
@@ -253,7 +253,7 @@ class TradingService:
             # Atualizar status
             if client_id in self.bot_status:
                 self.bot_status[client_id]["status"] = "paused"
-                self.bot_status[client_id]["paused_at"] = datetime.utcnow()
+                self.bot_status[client_id]["paused_at"] = datetime.now(UTC)
             
             logger.info(f"Bot pausado para cliente {client_id}")
             
@@ -301,7 +301,7 @@ class TradingService:
             # Atualizar status
             if client_id in self.bot_status:
                 self.bot_status[client_id]["status"] = "running"
-                self.bot_status[client_id]["resumed_at"] = datetime.utcnow()
+                self.bot_status[client_id]["resumed_at"] = datetime.now(UTC)
             
             logger.info(f"Bot retomado para cliente {client_id}")
             
@@ -422,11 +422,11 @@ class TradingService:
             cache_key = f"{client_id}_{period}"
             if cache_key in self.performance_cache:
                 cached_data = self.performance_cache[cache_key]
-                if (datetime.utcnow() - cached_data["timestamp"]).seconds < 300:  # 5 min cache
+                if (datetime.now(UTC) - cached_data["timestamp"]).seconds < 300:  # 5 min cache
                     return cached_data["data"]
             
             # Calcular período de análise
-            end_date = datetime.utcnow()
+            end_date = datetime.now(UTC)
             if period == "1d":
                 start_date = end_date - timedelta(days=1)
             elif period == "7d":
@@ -451,7 +451,7 @@ class TradingService:
                 # Cache resultado
                 self.performance_cache[cache_key] = {
                     "data": performance,
-                    "timestamp": datetime.utcnow()
+                    "timestamp": datetime.now(UTC)
                 }
                 
                 return performance
@@ -497,7 +497,7 @@ class TradingService:
                 if "strategy_parameters" in config_data:
                     config.strategy_parameters = config_data["strategy_parameters"]
                 
-                config.updated_at = datetime.utcnow()
+                config.updated_at = datetime.now(UTC)
                 
                 await session.commit()
                 
@@ -552,7 +552,7 @@ class TradingService:
     
     async def _calculate_daily_pnl(self, client_id: int) -> float:
         """Calcula P&L diário do cliente"""
-        today = datetime.utcnow().date()
+        today = datetime.now(UTC).date()
         
         async with get_db_session() as session:
             orders = session.query(TradingOrder).filter(
@@ -570,7 +570,7 @@ class TradingService:
     
     async def _count_trades_today(self, client_id: int) -> int:
         """Conta trades executados hoje"""
-        today = datetime.utcnow().date()
+        today = datetime.now(UTC).date()
         
         async with get_db_session() as session:
             count = session.query(TradingOrder).filter(

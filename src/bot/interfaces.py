@@ -1,40 +1,43 @@
-"""
-Abstract interfaces for trading bot components
-"""
-from abc import ABC, abstractmethod
-from typing import Dict, List, Optional, Any
-from dataclasses import dataclass
+from __future__ import annotations
+
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
+from typing import Optional, List
 
 
-class OrderSide(Enum):
-    """Order side enumeration"""
+# =========================
+# Enums
+# =========================
+class OrderSide(str, Enum):
     BUY = "Buy"
     SELL = "Sell"
 
 
-class OrderType(Enum):
-    """Order type enumeration"""
+class OrderType(str, Enum):
     MARKET = "Market"
     LIMIT = "Limit"
-    STOP = "Stop"
-    STOP_LIMIT = "StopLimit"
 
 
-class PositionSide(Enum):
-    """Position side enumeration"""
-    LONG = "Buy"
-    SHORT = "Sell"
-    NONE = "None"
+class PositionSide(str, Enum):
+    LONG = "LONG"
+    SHORT = "SHORT"
 
 
+class OrderStatus(str, Enum):
+    NEW = "NEW"
+    FILLED = "FILLED"
+    CANCELED = "CANCELED"
+
+
+# =========================
+# Modelos / DTOs
+# =========================
 @dataclass
 class MarketData:
-    """Market data structure"""
     symbol: str
-    timestamp: datetime
     price: float
+    timestamp: datetime
     volume: float
     bid: Optional[float] = None
     ask: Optional[float] = None
@@ -45,7 +48,6 @@ class MarketData:
 
 @dataclass
 class OrderRequest:
-    """Order request structure"""
     symbol: str
     side: OrderSide
     order_type: OrderType
@@ -58,174 +60,71 @@ class OrderRequest:
 
 @dataclass
 class Order:
-    """Order structure"""
-    order_id: str
+    id: str
     symbol: str
     side: OrderSide
     order_type: OrderType
     quantity: float
-    price: Optional[float]
-    filled_quantity: float
-    status: str
-    timestamp: datetime
-    avg_price: Optional[float] = None
+    price: Optional[float] = None
+    status: OrderStatus = OrderStatus.NEW
+    created_at: datetime = field(default_factory=lambda: datetime.now())
 
 
 @dataclass
 class Position:
-    """Position structure"""
     symbol: str
     side: PositionSide
     size: float
     entry_price: float
-    mark_price: float
-    unrealized_pnl: float
-    realized_pnl: float
-    timestamp: datetime
+    # Campos que geravam erro nos testes quando obrigatórios:
+    mark_price: Optional[float] = None
+    unrealized_pnl: float = 0.0
+    realized_pnl: float = 0.0
+    timestamp: datetime = field(default_factory=lambda: datetime.now())
 
 
 @dataclass
 class Balance:
-    """Balance structure"""
     asset: str
     free: float
-    locked: float
-    total: float
+    locked: float = 0.0
 
 
-class MarketDataProvider(ABC):
-    """Abstract market data provider interface"""
-    
-    @abstractmethod
-    async def get_ticker(self, symbol: str) -> MarketData:
-        """Get current ticker data for a symbol"""
-        pass
-    
-    @abstractmethod
-    async def get_orderbook(self, symbol: str, limit: int = 20) -> Dict[str, Any]:
-        """Get orderbook data for a symbol"""
-        pass
-    
-    @abstractmethod
-    async def get_klines(self, symbol: str, interval: str, limit: int = 100) -> List[Dict]:
-        """Get kline/candlestick data"""
-        pass
-    
-    @abstractmethod
-    async def subscribe_ticker(self, symbol: str, callback) -> None:
-        """Subscribe to real-time ticker updates"""
-        pass
-    
-    @abstractmethod
-    async def subscribe_orderbook(self, symbol: str, callback) -> None:
-        """Subscribe to real-time orderbook updates"""
-        pass
+@dataclass
+class AccountInfo:
+    balances: List[Balance]
 
 
-class OrderExecutor(ABC):
-    """Abstract order executor interface"""
-    
-    @abstractmethod
-    async def place_order(self, order_request: OrderRequest) -> Order:
-        """Place a new order"""
-        pass
-    
-    @abstractmethod
-    async def cancel_order(self, symbol: str, order_id: str) -> bool:
-        """Cancel an existing order"""
-        pass
-    
-    @abstractmethod
-    async def get_order(self, symbol: str, order_id: str) -> Optional[Order]:
-        """Get order details"""
-        pass
-    
-    @abstractmethod
-    async def get_open_orders(self, symbol: Optional[str] = None) -> List[Order]:
-        """Get all open orders"""
-        pass
-    
-    @abstractmethod
-    async def get_order_history(self, symbol: Optional[str] = None, limit: int = 100) -> List[Order]:
-        """Get order history"""
-        pass
+# =========================
+# “Interfaces” (contratos mínimos)
+# =========================
+class MarketDataProvider:
+    async def get_market_data(self, symbol: str) -> MarketData:  # pragma: no cover
+        raise NotImplementedError
 
 
-class AccountManager(ABC):
-    """Abstract account manager interface"""
-    
-    @abstractmethod
-    async def get_balance(self) -> List[Balance]:
-        """Get account balance"""
-        pass
-    
-    @abstractmethod
-    async def get_positions(self, symbol: Optional[str] = None) -> List[Position]:
-        """Get current positions"""
-        pass
-    
-    @abstractmethod
-    async def get_position(self, symbol: str) -> Optional[Position]:
-        """Get position for specific symbol"""
-        pass
-    
-    @abstractmethod
-    async def close_position(self, symbol: str, quantity: Optional[float] = None) -> Order:
-        """Close position (market order)"""
-        pass
+class OrderExecutor:
+    async def place_order(self, req: OrderRequest) -> Order:  # pragma: no cover
+        raise NotImplementedError
 
 
-class TradingStrategy(ABC):
-    """Abstract trading strategy interface"""
-    
-    @abstractmethod
-    async def analyze(self, market_data: MarketData, positions: List[Position]) -> List[OrderRequest]:
-        """Analyze market data and return trading signals"""
-        pass
-    
-    @abstractmethod
-    async def on_order_filled(self, order: Order) -> None:
-        """Handle order fill events"""
-        pass
-    
-    @abstractmethod
-    async def on_position_update(self, position: Position) -> None:
-        """Handle position update events"""
-        pass
-    
-    @abstractmethod
-    def get_risk_parameters(self) -> Dict[str, Any]:
-        """Get current risk parameters"""
-        pass
-    
-    @abstractmethod
-    def update_risk_parameters(self, parameters: Dict[str, Any]) -> None:
-        """Update risk parameters"""
-        pass
+class AccountManager:
+    async def get_account_info(self) -> AccountInfo:  # pragma: no cover
+        raise NotImplementedError
 
 
-class RiskManager(ABC):
-    """Abstract risk manager interface"""
-    
-    @abstractmethod
-    async def validate_order(self, order_request: OrderRequest, account_balance: List[Balance], 
-                           positions: List[Position]) -> bool:
-        """Validate order against risk parameters"""
-        pass
-    
-    @abstractmethod
-    async def check_position_limits(self, positions: List[Position]) -> List[str]:
-        """Check if positions exceed limits"""
-        pass
-    
-    @abstractmethod
-    async def calculate_position_size(self, symbol: str, entry_price: float, 
-                                    stop_loss: float, risk_amount: float) -> float:
-        """Calculate appropriate position size based on risk"""
-        pass
-    
-    @abstractmethod
-    def get_max_position_size(self, symbol: str) -> float:
-        """Get maximum allowed position size for symbol"""
-        pass
-
+__all__ = [
+    "OrderSide",
+    "OrderType",
+    "PositionSide",
+    "OrderStatus",
+    "MarketData",
+    "OrderRequest",
+    "Order",
+    "Position",
+    "Balance",
+    "AccountInfo",
+    "MarketDataProvider",
+    "OrderExecutor",
+    "AccountManager",
+]

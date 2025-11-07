@@ -8,7 +8,7 @@ from fastapi import HTTPException, Depends, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Optional, Dict, Any
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 import asyncio
 from functools import wraps
 
@@ -120,7 +120,7 @@ class AuthMiddleware:
             
             # Verificar expiração
             exp = payload.get("exp")
-            if exp and datetime.utcnow().timestamp() > exp:
+            if exp and datetime.now(UTC).timestamp() > exp:
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="Token expirado",
@@ -141,7 +141,7 @@ class AuthMiddleware:
     
     def create_access_token(self, client_id: int, email: str) -> str:
         """Cria token de acesso JWT"""
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         expire = now + timedelta(hours=self.token_expiration)
         
         payload = {
@@ -319,7 +319,7 @@ class TokenManager:
     
     def create_refresh_token(self, client_id: int) -> str:
         """Cria token de refresh"""
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         expire = now + timedelta(days=30)  # Refresh token válido por 30 dias
         
         payload = {
@@ -418,13 +418,13 @@ class SessionManager:
         
     def create_session(self, client_id: int, token: str) -> str:
         """Cria nova sessão para cliente"""
-        session_id = f"session_{client_id}_{datetime.utcnow().timestamp()}"
+        session_id = f"session_{client_id}_{datetime.now(UTC).timestamp()}"
         
         self.active_sessions[client_id] = {
             "session_id": session_id,
             "token": token,
-            "created_at": datetime.utcnow(),
-            "last_activity": datetime.utcnow(),
+            "created_at": datetime.now(UTC),
+            "last_activity": datetime.now(UTC),
             "ip_address": None,  # Será preenchido pelo middleware
             "user_agent": None,  # Será preenchido pelo middleware
         }
@@ -434,7 +434,7 @@ class SessionManager:
     def update_activity(self, client_id: int) -> None:
         """Atualiza última atividade da sessão"""
         if client_id in self.active_sessions:
-            self.active_sessions[client_id]["last_activity"] = datetime.utcnow()
+            self.active_sessions[client_id]["last_activity"] = datetime.now(UTC)
     
     def end_session(self, client_id: int) -> bool:
         """Encerra sessão do cliente"""
@@ -451,7 +451,7 @@ class SessionManager:
     
     def cleanup_expired_sessions(self) -> int:
         """Remove sessões expiradas"""
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         expired_sessions = []
         
         for client_id, session_info in self.active_sessions.items():

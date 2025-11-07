@@ -4,7 +4,7 @@ Client model and related database operations
 from sqlalchemy import Column, String, Boolean, DateTime, Text, Float, Integer, JSON
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
-from datetime import datetime
+from datetime import datetime, UTC
 import uuid
 
 from .database import Base
@@ -94,7 +94,7 @@ class ClientSession(Base):
     
     def is_expired(self):
         """Check if session is expired"""
-        return datetime.utcnow() > self.expires_at
+        return datetime.now(UTC) > self.expires_at
     
     def to_dict(self):
         """Convert to dictionary"""

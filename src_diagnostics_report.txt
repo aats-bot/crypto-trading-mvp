@@ -1,0 +1,612 @@
+
+================================================================================
+ÁRVORE DE ARQUIVOS (src)
+================================================================================
+
+C:\Users\lucas\crypto-trading-mvp\src
+__init__.py
+__pycache__/ [dir]
+api/ [pkg]
+  __init__.py
+  __pycache__/ [dir]
+  deps.py
+  main.py
+  metrics.py
+  middleware/ [pkg]
+    __init__.py
+    auth_middleware.py
+  routes/ [pkg]
+    __init__.py
+    __pycache__/ [dir]
+    auth.py
+    clients.py
+    trading.py
+  services/ [pkg]
+    __init__.py
+    __pycache__/ [dir]
+    client_service.py
+    trading_service.py
+bot/ [pkg]
+  __init__.py
+  __pycache__/ [dir]
+  bybit_provider.py
+  indicators/ [pkg]
+    __init__.py
+  indicators.py
+  interfaces.py
+  risk.py
+  risk_manager.py
+  strategies/ [pkg]
+    __init__.py
+    __pycache__/ [dir]
+    ppp_vishva_strategy.py
+  strategies_base.py
+  trading_bot.py
+  worker.py
+common/ [pkg]
+  __init__.py
+config/ [pkg]
+  __init__.py
+dashboard/ [pkg]
+  __init__.py
+  components/ [pkg]
+    __init__.py
+    auth_components.py
+    chart_components.py
+    trading_components.py
+  main.py
+  pages/ [pkg]
+    __init__.py
+  static/ [dir]
+    css/ [dir]
+    images/ [dir]
+    js/ [dir]
+indicators/ [pkg]
+  __init__.py
+indicators.py
+main.py
+models/ [pkg]
+  __init__.py
+  __pycache__/ [dir]
+  client.py
+  database.py
+  migrations/ [pkg]
+    __init__.py
+monitoring/ [pkg]
+  __init__.py
+  alerts/ [dir]
+  grafana/ [dir]
+    dashboards/ [dir]
+    provisioning/ [dir]
+  metrics.py
+  prometheus/ [dir]
+    rules/ [dir]
+    targets/ [dir]
+risk_manager.py
+security/ [pkg]
+  __init__.py
+  encryption.py
+strategy/ [pkg]
+  __init__.py
+  __pycache__/ [dir]
+  indicators/ [pkg]
+    __init__.py
+    __pycache__/ [dir]
+    atr.py
+    atr_indicator.py
+    base_indicator.py
+    ema.py
+    ema_indicator.py
+    ewo.py
+    ewo_indicator.py
+    heikin_ashi.py
+    heikin_ashi_indicator.py
+    indicator_manager.py
+    rsi.py
+    rsi_indicator.py
+    stoch_rsi.py
+    stoch_rsi_indicator.py
+    ut_bot.py
+    ut_bot_indicator.py
+  ppp_vishva_algo.py
+ui/ [pkg]
+  __init__.py
+  streamlit_app.py
+utils/ [pkg]
+  __init__.py
+  bybit_test.py
+  bybit_test_mock.py
+  data_utils.py
+  indicators.py
+  performance_utils.py
+  simple_indicators.py
+
+================================================================================
+PASTAS SEM __init__.py
+================================================================================
+
+__pycache__
+api\__pycache__
+bot\__pycache__
+dashboard\static
+models\__pycache__
+monitoring\alerts
+monitoring\grafana
+monitoring\prometheus
+strategy\__pycache__
+strategy\indicators\__pycache__
+monitoring\grafana\dashboards
+monitoring\grafana\provisioning
+monitoring\prometheus\rules
+monitoring\prometheus\targets
+dashboard\static\css
+dashboard\static\images
+dashboard\static\js
+bot\strategies\__pycache__
+api\routes\__pycache__
+api\services\__pycache__
+
+================================================================================
+CHECAGENS FOCADAS (imports/estruturas)
+================================================================================
+
+
+[models/database.py] => PROBLEMAS ENCONTRADOS
+ - Falta import: from sqlalchemy.orm import declarative_base
+ - Falta definição: Base = declarative_base()
+ - Falta função: init_engine(...)
+ - Falta função: get_session()
+
+[models/client.py] => OK
+
+[strategies.py] => PROBLEMAS ENCONTRADOS
+ - C:\Users\lucas\crypto-trading-mvp\src\strategies.py não existe.
+
+[indicators.py] => OK
+
+[bot/strategies/__init__.py (shim)] => PROBLEMAS ENCONTRADOS
+ - Esperado reexport de src.strategies (from src.strategies import ...).
+
+[bot/indicators.py (shim)] => OK
+
+[bot/risk.py (shim)] => OK
+
+[bot/trading_bot.py] => PROBLEMAS ENCONTRADOS
+ - Falta import local: from .risk import RiskManager
+
+[risk_manager.py] => OK
+
+================================================================================
+SNIPPETS (primeiras linhas de arquivos-chave)
+================================================================================
+
+
+--- models\database.py ---
+# src/models/database.py
+from __future__ import annotations
+from typing import Dict, List, Tuple, Optional
+
+class DatabaseManager:
+    """Implementação simples em memória que atende aos testes."""
+
+    def __init__(self):
+        self._users: Dict[int, Dict] = {}
+        self._next_user_id = 1
+
+        self._logs: List[Dict] = []
+        self._next_log_id = 1
+
+        # (symbol, timeframe) -> List[candle]
+        self._market_data: Dict[Tuple[str, str], List[Dict]] = {}
+
+    # ---------- Users ----------
+    async def create_user(self, username: str, email: str, password_hash: str) -> Dict:
+        uid = self._next_user_id
+        self._next_user_id += 1
+        user = {"id": uid, "username": username, "email": email, "password_hash": password_hash}
+        self._users[uid] = user
+        return dict(user)
+
+    async def get_user(self, user_id: int) -> Optional[Dict]:
+        u = self._users.get(int(user_id))
+        return dict(u) if u else None
+
+    # ---------- Logs ----------
+    async def log_message(self, level: str, message: str, source: str, user_id: Optional[int] = None, extra: Optional[Dict] = None) -> int:
+        lid = self._next_log_id
+        self._next_log_id += 1
+        entry = {
+            "id": lid,
+            "level": level,
+            "message": message,
+            "source": source,
+            "user_id": user_id,
+            "extra": extra or {},
+        }
+        self._logs.append(entry)
+        return lid
+
+    async def get_logs(self, limit: int = 100) -> List[Dict]:
+        # mais recente primeiro
+        return [dict(x) for x in reversed(self._logs[-limit:])]
+
+    # ---------- Market data ----------
+    async def store_market_data(self, symbol: str, timeframe: str, candles: List[Dict]) -> int:
+        key = (symbol, timeframe)
+        bucket = self._market_data.setdefault(key, [])
+        for c in candles:
+            bucket.append({
+                "timestamp": int(c["timestamp"]),
+                "open": float(c["open"]),
+                "high": float(c["high"]),
+                "low": float(c["low"]),
+                "close": float(c["close"]),
+                "volume": float(c["volume"]),
+
+--- models\client.py ---
+"""
+Client model and related database operations
+"""
+from sqlalchemy import Column, String, Boolean, DateTime, Text, Float, Integer, JSON
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.sql import func
+from datetime import datetime, UTC
+import uuid
+
+from .database import Base
+
+
+class Client(Base):
+    """Client model"""
+    __tablename__ = "clients"
+    
+    # Primary key
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    
+    # Basic information
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    name = Column(String(255), nullable=False)
+    password_hash = Column(String(255), nullable=False)
+    
+    # Status
+    is_active = Column(Boolean, default=True, nullable=False)
+    is_verified = Column(Boolean, default=False, nullable=False)
+    
+    # API credentials (encrypted)
+    bybit_api_key_encrypted = Column(Text, nullable=True)
+    bybit_api_secret_encrypted = Column(Text, nullable=True)
+    
+    # Trading configuration
+    trading_config = Column(JSON, nullable=True)
+    risk_config = Column(JSON, nullable=True)
+    
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    last_login = Column(DateTime(timezone=True), nullable=True)
+    
+    def __repr__(self):
+        return f"<Client(id={self.id}, email={self.email}, name={self.name})>"
+    
+    def to_dict(self, include_sensitive=False):
+        """Convert to dictionary"""
+        data = {
+            "id": str(self.id),
+            "email": self.email,
+            "name": self.name,
+            "is_active": self.is_active,
+            "is_verified": self.is_verified,
+            "trading_config": self.trading_config,
+            "risk_config": self.risk_config,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "last_login": self.last_login.isoformat() if self.last_login else None
+        }
+        
+        if include_sensitive:
+
+--- indicators.py ---
+# src/indicators.py
+from __future__ import annotations
+import math
+from typing import List, Dict, Iterable
+
+class BaseIndicator:
+    def __init__(self, period: int, name: str = "BaseIndicator"):
+        self.period = int(period)
+        self.name = name
+        self.data: List[float] = []
+
+    def add_value(self, value: float) -> None:
+        try:
+            v = float(value)
+        except Exception:
+            return
+        if math.isnan(v) or math.isinf(v):
+            return
+        self.data.append(v)
+
+    def is_ready(self) -> bool:
+        return len(self.data) >= self.period
+
+
+class EMAIndicator(BaseIndicator):
+    def __init__(self, period: int):
+        super().__init__(period, "EMA")
+        self._ema: float | None = None
+        self._mult = 2.0 / (self.period + 1.0)
+
+    def add_value(self, value: float) -> None:
+        super().add_value(value)
+        if not self.data:
+            return
+        v = self.data[-1]
+        if self._ema is None:
+            if len(self.data) >= self.period:
+                self._ema = sum(self.data[-self.period:]) / self.period
+        else:
+            self._ema = (v - self._ema) * self._mult + self._ema
+
+    def calculate(self) -> float:
+        return 0.0 if self._ema is None else float(self._ema)
+
+
+class RSIIndicator(BaseIndicator):
+    def __init__(self, period: int = 14):
+        super().__init__(period, "RSI")
+        self._prev: float | None = None
+        self._avg_gain: float | None = None
+        self._avg_loss: float | None = None
+        self._rsi: float | None = None
+
+    def add_value(self, value: float) -> None:
+        super().add_value(value)
+        v = self.data[-1]
+        if self._prev is None:
+            self._prev = v
+            return
+
+
+--- bot\strategies\__init__.py ---
+# src/bot/strategies/__init__.py
+from __future__ import annotations
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Dict, List, Optional
+
+from src.indicators import EMAIndicator, RSIIndicator, StochRSIIndicator
+
+@dataclass
+class MarketData:
+    symbol: str
+    price: float
+    timestamp: datetime
+    volume: float = 0.0
+
+
+class BaseStrategy:
+    def __init__(self, config: Optional[Dict] = None):
+        self.config = config or {}
+        self._risk = {
+            "risk_per_trade": float(self.config.get("risk_per_trade", 0.02)),
+            "max_position_size": float(self.config.get("max_position_size", 1000.0)),
+            "max_daily_loss": float(self.config.get("max_daily_loss", 0.05)),
+        }
+
+    def get_risk_parameters(self) -> Dict:
+        return dict(self._risk)
+
+    def update_risk_parameters(self, params: Dict) -> None:
+        if not params:
+            return
+        for k, v in params.items():
+            self._risk[k] = v
+
+    async def analyze(self, market_data: MarketData, price_history: List[float]) -> List:
+        return []
+
+
+class SMAStrategy(BaseStrategy):
+    def __init__(self, config: Optional[Dict] = None):
+        super().__init__(config)
+        self.fast_period = int(self.config.get("fast_period", 5))
+        self.slow_period = int(self.config.get("slow_period", 10))
+
+    def _calculate_sma(self, prices: List[float], period: int) -> float:
+        if period <= 0 or len(prices) < period:
+            return 0.0
+        return sum(prices[-period:]) / period
+
+    async def analyze(self, market_data: MarketData, price_history: List[float]) -> List:
+        from src.bot.interfaces import OrderRequest, OrderSide, OrderType
+        prices = (price_history or []) + [market_data.price]
+        f = self._calculate_sma(prices, self.fast_period)
+        s = self._calculate_sma(prices, self.slow_period)
+        orders = []
+        if f > s and f > 0 and s > 0:
+            qty = round(self._risk["risk_per_trade"] * 1000.0 / max(market_data.price, 1.0), 6)
+            orders.append(OrderRequest(market_data.symbol, OrderSide.BUY, OrderType.MARKET, qty))
+        return orders
+
+
+--- bot\indicators.py ---
+# src/bot/indicators.py
+from src.indicators import *
+
+--- bot\risk.py ---
+# src/bot/risk.py
+from __future__ import annotations
+from typing import Any, Dict
+
+
+class RiskManager:
+    """
+    Implementação simples de gerenciador de risco usada pelos testes.
+    Expõe métodos:
+      - get_risk_parameters()
+      - update_risk_parameters(...)
+      - assess_risk(balance, price, volatility=0.0)
+      - compute_position_size(balance, price)
+    """
+
+    def __init__(self, params: Dict[str, Any] | None = None) -> None:
+        defaults: Dict[str, Any] = {
+            "risk_per_trade": 0.01,     # 1% do saldo por trade
+            "max_position_size": 1000.0,  # valor máximo em USD por posição
+            "stop_loss_pct": 0.02,      # 2%
+            "take_profit_pct": 0.04,    # 4%
+        }
+        self._params: Dict[str, Any] = {**defaults, **(params or {})}
+
+    def get_risk_parameters(self) -> Dict[str, Any]:
+        return dict(self._params)
+
+    def update_risk_parameters(self, new_params: Dict[str, Any] | None = None) -> None:
+        if new_params:
+            self._params.update(new_params)
+
+    def compute_position_size(self, balance: float, price: float) -> float:
+        """
+        Calcula um tamanho de posição simples limitado tanto por risco
+        quanto por tamanho máximo configurado.
+        """
+        if price <= 0:
+            return 0.0
+
+        # limite por tamanho máximo em USD
+        max_qty = float(self._params["max_position_size"]) / float(price)
+
+        # limite por risco (% do balance dividido pela perda por stop)
+        risk_amount = float(balance) * float(self._params["risk_per_trade"])
+        stop_loss_pct = float(self._params["stop_loss_pct"]) or 1.0
+        # perda por unidade ~ price * stop_loss_pct
+        qty_by_risk = risk_amount / (float(price) * stop_loss_pct)
+
+        qty = min(max_qty, qty_by_risk)
+        return float(max(0.0, qty))
+
+    def assess_risk(self, balance: float, price: float, volatility: float = 0.0) -> Dict[str, float]:
+        """
+        Retorna parâmetros básicos de risco para uma entrada simulada.
+        """
+        pos_size = self.compute_position_size(balance, price)
+        sl = float(price) * (1.0 - float(self._params["stop_loss_pct"]))
+        tp = float(price) * (1.0 + float(self._params["take_profit_pct"]))
+        return {
+            "position_size": float(pos_size),
+
+--- bot\trading_bot.py ---
+# src/bot/trading_bot.py
+from __future__ import annotations
+from typing import Dict, List, Optional
+from datetime import datetime
+
+from .strategies import get_strategy, MarketData
+from src.risk_manager import RiskManager
+
+
+class TradingBot:
+    def __init__(self, client_config: Dict, bybit_provider, risk_manager: Optional[RiskManager] = None):
+        self.client_config = client_config or {}
+        self.client_id = self.client_config.get("client_id")
+        self.symbols: List[str] = list(self.client_config.get("symbols") or [])
+        self.strategy = get_strategy(self.client_config.get("strategy", "sma"), self.client_config)
+        self.bybit = bybit_provider
+        self.risk_manager = risk_manager or RiskManager()
+        self._price_history: Dict[str, List[float]] = {}
+
+    async def _trading_cycle(self) -> None:
+        for symbol in self.symbols:
+            md_raw = await self.bybit.get_market_data(symbol)
+            market_data = MarketData(
+                symbol=symbol,
+                price=md_raw.price if hasattr(md_raw, "price") else md_raw["price"],
+                timestamp=md_raw.timestamp if hasattr(md_raw, "timestamp") else datetime.now(),
+                volume=md_raw.volume if hasattr(md_raw, "volume") else md_raw.get("volume", 0.0),
+            )
+
+            hist = self._price_history.setdefault(symbol, [])
+            hist.append(market_data.price)
+            if len(hist) > 1000:
+                del hist[:-500]
+
+            orders = await self.strategy.analyze(market_data, hist[:-1])
+            if not orders:
+                continue
+
+            balance = await self._maybe(self.bybit.get_account_balance())
+            usdt = float((balance or {}).get("USDT", 0.0))
+
+            for order in orders:
+                # gate de risco: não mandar ordem se saldo não cobre custo
+                est_cost = float(order.quantity) * float(market_data.price)
+                if not self.risk_manager.can_place_order(usdt_balance=usdt, estimated_cost=est_cost):
+                    continue
+                await self.bybit.place_order(symbol, order.side, order.quantity)
+
+    async def _maybe(self, obj):
+        if hasattr(obj, "__await__"):
+            return await obj
+        return obj
+
+--- risk_manager.py ---
+# AUTOGERADO por quick_fix.py
+from __future__ import annotations
+from typing import Optional, List, Dict
+
+class RiskManager:
+    def __init__(self, config: Optional[dict] = None):
+        cfg = config or {}
+        self.max_position_size: float = float(cfg.get("max_position_size", 1000.0))
+        self.max_daily_loss: float = float(cfg.get("max_daily_loss", 100.0))
+        self.max_open_positions: int = int(cfg.get("max_open_positions", 5))
+        self.risk_per_trade: float = float(cfg.get("risk_per_trade", 0.02))
+        self._daily_pnl: float = 0.0
+
+    def get_max_position_size(self) -> float:
+        return self.max_position_size
+
+    def update_daily_pnl(self, delta: float):
+        self._daily_pnl += float(delta)
+
+    def reset_daily(self):
+        self._daily_pnl = 0.0
+
+    def check_position_limits(self, open_positions: List[dict]) -> bool:
+        return len(open_positions) < self.max_open_positions
+
+    def calculate_position_size(self, balance: float, price: float) -> float:
+        if price <= 0:
+            return 0.0
+        size_by_risk = (balance * self.risk_per_trade) / price
+        return max(0.0, min(size_by_risk, self.max_position_size))
+
+    def validate_order(self, side: str, balance: float, price: float, open_positions: List[dict]) -> Dict[str, object]:
+        if self._daily_pnl <= -abs(self.max_daily_loss):
+            return {"valid": False, "reason": "daily_loss_exceeded"}
+        if not self.check_position_limits(open_positions):
+            return {"valid": False, "reason": "too_many_positions"}
+        size = self.calculate_position_size(balance, price)
+        if size <= 0:
+            return {"valid": False, "reason": "insufficient_balance"}
+        return {"valid": True, "size": size}
+
+class RiskManager:
+    def __init__(self, config: dict | None = None):
+        cfg = config or {}
+        self.max_position_size = float(cfg.get("max_position_size", 1000.0))
+        self.max_daily_loss = float(cfg.get("max_daily_loss", 100.0))
+        self.max_open_positions = int(cfg.get("max_open_positions", 5))
+        self.risk_per_trade = float(cfg.get("risk_per_trade", 0.01))
+        self.daily_loss = 0.0
+
+    def get_max_position_size(self):
+        return self.max_position_size
+
+    def calculate_position_size(self, price: float, stop_loss: float, risk_amount: float):
+        if price <= 0:
+            return 0.0
+        # tamanho = risco_em_$ / (distância SL)
+        dist = abs(stop_loss)
+        dist = dist if dist > 1e-9 else max(price*0.005, 1e-6)
+        size = risk_amount / dist

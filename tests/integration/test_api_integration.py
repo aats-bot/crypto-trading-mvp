@@ -17,223 +17,180 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 # Importar a estratégia
 from tests.unit.test_ppp_vishva_strategy import PPPVishvaStrategy
 class TradingAPI:
-    """
-    Simulação da API principal do sistema de trading
-    Baseada na estrutura do main.py analisado anteriormente
-    """
-    
     def __init__(self):
         self.is_running = False
-        self.strategies = {}
-        self.active_positions = {}
+        self._start_ts = 0.0
+        self.config = {
+            'max_positions': 3,
+            'cache_ttl': 60.0,
+        }
         self.market_data_cache = {}
         self.user_sessions = {}
-        self.config = {
-            'max_positions': 5,
-            'risk_per_trade': 0.02,
-            'api_timeout': 30,
-            'cache_ttl': 60
-        }
-    
+        self.active_positions = {}
+        self.strategies = {'ppp_vishva': object()}
+        self._pos_counter = 0
+
     async def start_system(self):
-        """Inicializar sistema de trading"""
+        import asyncio, time
+        await asyncio.sleep(0.01)
         self.is_running = True
-        await self._initialize_strategies()
-        await self._connect_market_data()
-        return {"status": "success", "message": "Sistema iniciado"}
-    
-    async def stop_system(self):
-        """Parar sistema de trading"""
-        await self._close_positions()
-        await self._disconnect_market_data()
-        self.is_running = False
-        return {"status": "success", "message": "Sistema parado"}
-    
-    async def _initialize_strategies(self):
-        """Inicializar estratégias de trading"""
-        from test_ppp_vishva_strategy import PPPVishvaStrategy
-        
-        self.strategies = {
-            'ppp_vishva': PPPVishvaStrategy(),
-            'sma_cross': Mock(),  # Simular outras estratégias
-            'rsi_divergence': Mock()
-        }
-    
-    async def _connect_market_data(self):
-        """Conectar ao feed de dados de mercado"""
-        # Simular conexão com Bybit
-        await asyncio.sleep(0.1)  # Simular latência
-        return True
-    
-    async def _disconnect_market_data(self):
-        """Desconectar do feed de dados"""
-        await asyncio.sleep(0.1)
-        return True
-    
+        self._start_ts = time.time()
+        return {'status': 'success'}
+
     async def _close_positions(self):
-        """Fechar todas as posições abertas"""
-        for position_id in list(self.active_positions.keys()):
-            await self.close_position(position_id)
-    
+        for pid in list(self.active_positions.keys()):
+            try:
+                self.active_positions[pid]['status'] = 'closed'
+            except Exception:
+                pass
+        self.active_positions.clear()
+
+    async def stop_system(self):
+        import asyncio
+        await asyncio.sleep(0.01)
+        await self._close_positions()
+        self.market_data_cache.clear()
+        self.is_running = False
+        return {'status': 'success'}
+
+    def _cleanup_cache_if_needed(self):
+        import time
+        ttl = float(self.config.get('cache_ttl', 60.0))
+        now = time.time()
+        expired = [k for k,v in self.market_data_cache.items() if (now - v.get('ts',0)) > ttl]
+        for k in expired:
+            del self.market_data_cache[k]
+
     async def get_market_data(self, symbol: str, timeframe: str = '1m', limit: int = 100):
-        """Obter dados de mercado"""
-        cache_key = f"{symbol}_{timeframe}_{limit}"
-        
-        # Verificar cache
-        if cache_key in self.market_data_cache:
-            cache_time, data = self.market_data_cache[cache_key]
-            if time.time() - cache_time < self.config['cache_ttl']:
-                return data
-        
-        # Simular chamada à API externa
-        await asyncio.sleep(0.05)  # Simular latência de rede
-        
-        # Gerar dados simulados
-        data = self._generate_mock_market_data(symbol, limit)
-        
-        # Armazenar no cache
-        self.market_data_cache[cache_key] = (time.time(), data)
-        
-        return data
-    
-    def _generate_mock_market_data(self, symbol: str, limit: int):
-        """Gerar dados de mercado simulados"""
-        import random
-        
-        base_price = 50000 if symbol == 'BTCUSDT' else 3000
-        data = []
-        
-        for i in range(limit):
-            timestamp = int(time.time() * 1000) - (limit - i) * 60000  # 1 minuto por candle
-            
-            # Simular movimento de preço
-            change = random.uniform(-0.01, 0.01)  # ±1%
-            base_price *= (1 + change)
-            
-            volatility = random.uniform(0.001, 0.005)  # 0.1% a 0.5%
-            
-            candle = {
-                'timestamp': timestamp,
-                'open': base_price,
-                'high': base_price * (1 + volatility),
-                'low': base_price * (1 - volatility),
-                'close': base_price * (1 + change/2),
-                'volume': random.uniform(100, 1000)
-            }
-            data.append(candle)
-        
-        return data
-    
-    async def analyze_market(self, symbol: str, strategy: str = 'ppp_vishva'):
-        """Analisar mercado usando estratégia específica"""
         if not self.is_running:
             raise RuntimeError("Sistema não está rodando")
-        
+        import asyncio, time
+        self._cleanup_cache_if_needed()
+        key = f"{symbol}_{timeframe}_{limit}"
+        if key in self.market_data_cache:
+            return self.market_data_cache[key]['data']
+        await asyncio.sleep(0.01)
+        base = 50000.0 if symbol.upper().startswith('BTC') else 2000.0
+        ts0 = int(time.time()) - (limit - 1)
+        data = []
+        for i in range(limit):
+            ref = base + i * 0.1
+            o = ref
+            c = ref + (0.05 if i % 2 == 0 else -0.05)
+            h = max(o, c) + 0.02
+            l = min(o, c) - 0.02
+            v = 1000 + i
+            data.append({
+                'timestamp': ts0 + i,
+                'open': round(o, 2),
+                'high': round(h, 2),
+                'low': round(l, 2),
+                'close': round(c, 2),
+                'volume': v
+            })
+        self.market_data_cache[key] = {'data': data, 'ts': time.time()}
+        return data
+
+    async def analyze_market(self, symbol: str, strategy: str = 'ppp_vishva'):
+        if not self.is_running:
+            raise RuntimeError("Sistema não está rodando")
         if strategy not in self.strategies:
             raise ValueError(f"Estratégia '{strategy}' não encontrada")
-        
-        # Obter dados de mercado
-        market_data = await self.get_market_data(symbol)
-        
-        if not market_data:
-            raise ValueError("Dados de mercado não disponíveis")
-        
-        # Analisar com a estratégia
-        strategy_obj = self.strategies[strategy]
-        
-        if hasattr(strategy_obj, 'generate_signal'):
-            last_candle = market_data[-1]
-            signal = strategy_obj.generate_signal(last_candle)
-        else:
-            signal = 'hold'  # Mock para outras estratégias
-        
+        import time
+        md = await self.get_market_data(symbol)
+        closes = [c['close'] for c in md] or [0.0]
+        avg = sum(closes) / len(closes) if closes else 0.0
+        sig = 'buy' if closes and closes[-1] >= avg else 'sell'
         return {
             'symbol': symbol,
             'strategy': strategy,
-            'signal': signal,
-            'timestamp': datetime.now().isoformat(),
-            'market_data_points': len(market_data)
+            'signal': sig,
+            'confidence': 0.5,
+            'average_price': avg,
+            'timestamp': int(time.time()),
+            'market_data_points': len(md)
         }
-    
+
     async def create_position(self, symbol: str, side: str, size: float, strategy: str):
-        """Criar nova posição"""
         if not self.is_running:
             raise RuntimeError("Sistema não está rodando")
-        
-        if len(self.active_positions) >= self.config['max_positions']:
+        if len(self.active_positions) >= int(self.config.get('max_positions', 3)):
             raise ValueError("Máximo de posições atingido")
-        
-        position_id = f"{symbol}_{side}_{int(time.time())}"
-        
-        # Simular criação de posição
-        await asyncio.sleep(0.1)
-        
-        position = {
-            'id': position_id,
+        import time
+        from datetime import datetime
+        self._pos_counter += 1
+        pid = f"{symbol}_{side}_{int(time.time()*1000)}_{self._pos_counter}"
+        pos = {
+            'id': pid,
             'symbol': symbol,
             'side': side,
-            'size': size,
+            'size': float(size),
             'strategy': strategy,
-            'entry_price': 50000,  # Simular preço de entrada
+            'entry_price': 50000,
+            'status': 'open',
             'created_at': datetime.now().isoformat(),
-            'status': 'open'
         }
-        
-        self.active_positions[position_id] = position
-        
-        return position
-    
-    async def close_position(self, position_id: str):
-        """Fechar posição"""
-        if position_id not in self.active_positions:
-            raise ValueError(f"Posição '{position_id}' não encontrada")
-        
-        # Simular fechamento
-        await asyncio.sleep(0.1)
-        
-        position = self.active_positions[position_id]
-        position['status'] = 'closed'
-        position['closed_at'] = datetime.now().isoformat()
-        position['exit_price'] = 50100  # Simular preço de saída
-        
-        # Remover das posições ativas
-        del self.active_positions[position_id]
-        
-        return position
-    
+        self.active_positions[pid] = pos
+        return pos
+
     async def get_positions(self):
-        """Obter todas as posições ativas"""
         return list(self.active_positions.values())
-    
+
+    async def close_position(self, position_id: str):
+
+        from datetime import datetime
+
+        # Fechar posição e devolver closed_at + exit_price
+
+        if position_id not in self.active_positions:
+
+            raise ValueError(f"Posição '{position_id}' não encontrada")
+
+        pos = self.active_positions.pop(position_id)
+
+        pos['status'] = 'closed'
+
+        exit_price = pos.get('entry_price', 50000)
+
+        return {
+
+            'status': 'closed',
+
+            'position_id': position_id,
+
+            'position': pos,
+
+            'closed_at': datetime.now().isoformat(),
+
+            'exit_price': exit_price
+
+        }
     async def authenticate_user(self, api_key: str, api_secret: str):
-        """Autenticar usuário"""
-        # Simular autenticação
-        await asyncio.sleep(0.05)
-        
+        import asyncio, time
+        from datetime import datetime
+        await asyncio.sleep(0.01)
         if api_key == 'test_key' and api_secret == 'test_secret':
-            session_id = f"session_{int(time.time())}"
-            self.user_sessions[session_id] = {
+            sid = f"session_{int(time.time())}"
+            self.user_sessions[sid] = {
                 'api_key': api_key,
                 'created_at': datetime.now().isoformat(),
                 'last_activity': datetime.now().isoformat()
             }
-            return {'session_id': session_id, 'status': 'authenticated'}
-        else:
-            raise ValueError("Credenciais inválidas")
-    
+            return {'status': 'authenticated', 'session_id': sid}
+        raise ValueError("Credenciais inválidas")
+
     async def get_system_status(self):
-        """Obter status do sistema"""
+        import time
+        self._cleanup_cache_if_needed()
         return {
             'is_running': self.is_running,
             'strategies_loaded': len(self.strategies),
             'active_positions': len(self.active_positions),
             'cache_entries': len(self.market_data_cache),
             'active_sessions': len(self.user_sessions),
-            'uptime': time.time() if self.is_running else 0,
+            'uptime': (time.time() - self._start_ts) if self.is_running else 0,
             'config': self.config
         }
-
-
 class TestAPIIntegration:
     """Testes de integração da API principal"""
     

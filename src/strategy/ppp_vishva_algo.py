@@ -1,367 +1,1 @@
-            return True
-        else:
-            return False
-    
-    def analyze_pullback_reversal(self, signals: Dict[str, int]) -> bool:
-        """
-        Analisa reversão em pullback com Stoch RSI
-        
-        Args:
-            signals: Sinais dos indicadores
-            
-        Returns:
-            True se há confirmação de reversão
-        """
-        stoch_rsi_signal = signals.get('stoch_rsi', 0)
-        ut_bot_signal = signals.get('ut_bot', 0)
-        
-        # Stoch RSI deve confirmar a direção do UT Bot
-        if ut_bot_signal == 1 and stoch_rsi_signal == 1:
-            return True
-        elif ut_bot_signal == -1 and stoch_rsi_signal == -1:
-            return True
-        else:
-            return False
-    
-    def analyze_multi_timeframe_validation(self, symbol: str) -> bool:
-        """
-        Analisa validação multi-timeframe (EMA20 + Heikin Ashi)
-        
-        Args:
-            symbol: Símbolo do ativo
-            
-        Returns:
-            True se a validação multi-timeframe confirma
-        """
-        try:
-            # Obter dados de timeframes maiores (4h e diário)
-            data_4h = self.get_market_data(symbol, "240", 50)  # 4h
-            data_1d = self.get_market_data(symbol, "D", 30)    # Diário
-            
-            if not data_4h or not data_1d:
-                return False
-            
-            # Analisar sinais em timeframes maiores
-            signals_4h = self.indicators.get_signals(data_4h)
-            signals_1d = self.indicators.get_signals(data_1d)
-            
-            # Verificar alinhamento de tendência
-            ema20_4h = signals_4h.get('ema100_trend', 0)  # Usar EMA100 como proxy
-            ema20_1d = signals_1d.get('ema100_trend', 0)
-            ha_4h = signals_4h.get('heikin_ashi', 0)
-            ha_1d = signals_1d.get('heikin_ashi', 0)
-            
-            # Tendência deve estar alinhada em pelo menos um timeframe maior
-            return (ema20_4h != 0 and ha_4h != 0) or (ema20_1d != 0 and ha_1d != 0)
-            
-        except Exception as e:
-            self.logger.error(f"Erro na validação multi-timeframe: {e}")
-            return False
-    
-    def check_entry_conditions(self, symbol: str) -> Tuple[SignalType, Dict]:
-        """
-        Verifica todas as condições de entrada
-        
-        Args:
-            symbol: Símbolo do ativo
-            
-        Returns:
-            Tupla com (tipo_de_sinal, dados_adicionais)
-        """
-        try:
-            # Obter dados de mercado
-            kline_data = self.get_market_data(symbol, self.timeframe)
-            if not kline_data:
-                return SignalType.NONE, {}
-            
-            # Calcular indicadores e sinais
-            signals = self.indicators.get_signals(kline_data)
-            if not signals:
-                return SignalType.NONE, {}
-            
-            # Obter preço atual e EMA100
-            data = self.indicators.get_indicator('ema100').prepare_data(kline_data)
-            current_price = float(kline_data[0][4])  # Close do último candle
-            ema100_values = self.indicators.get_indicator('ema100').calculate(data)
-            current_ema100 = ema100_values.iloc[-1]
-            
-            # 1. Verificar filtro de tendência EMA100
-            if not self.analyze_trend_filter(signals, current_price, current_ema100):
-                return SignalType.NONE, {}
-            
-            # 2. Verificar sinais de entrada do UT Bot
-            entry_signal = self.analyze_entry_signals(signals)
-            if entry_signal == SignalType.NONE:
-                return SignalType.NONE, {}
-            
-            # 3. Verificar confirmação de momentum (EWO)
-            if not self.analyze_momentum_confirmation(signals):
-                return SignalType.NONE, {}
-            
-            # 4. Verificar reversão em pullback (Stoch RSI)
-            if not self.analyze_pullback_reversal(signals):
-                return SignalType.NONE, {}
-            
-            # 5. Verificar validação multi-timeframe
-            if not self.analyze_multi_timeframe_validation(symbol):
-                return SignalType.NONE, {}
-            
-            # Todas as condições atendidas
-            additional_data = {
-                'current_price': current_price,
-                'ema100': current_ema100,
-                'signals': signals,
-                'atr': self._calculate_atr(data)
-            }
-            
-            self.logger.info(f"Sinal de entrada confirmado para {symbol}: {entry_signal}")
-            return entry_signal, additional_data
-            
-        except Exception as e:
-            self.logger.error(f"Erro ao verificar condições de entrada para {symbol}: {e}")
-            return SignalType.NONE, {}
-    
-    def _calculate_atr(self, data) -> float:
-        """
-        Calcula ATR atual para gerenciamento de risco
-        
-        Args:
-            data: DataFrame com dados OHLCV
-            
-        Returns:
-            Valor do ATR
-        """
-        try:
-            atr_indicator = self.indicators.get_indicator('ut_bot').atr
-            atr_values = atr_indicator.calculate(data)
-            return atr_values.iloc[-1]
-        except:
-            return 0.0
-    
-    def calculate_position_size(self, symbol: str, current_price: float, atr: float) -> float:
-        """
-        Calcula tamanho da posição baseado no risco
-        
-        Args:
-            symbol: Símbolo do ativo
-            current_price: Preço atual
-            atr: Valor do ATR
-            
-        Returns:
-            Tamanho da posição
-        """
-        max_position_size = self.config.get('risk_management.max_position_size', 0.01)
-        
-        # Por enquanto, usar tamanho fixo
-        # TODO: Implementar cálculo baseado em % do capital e ATR
-        return max_position_size
-    
-    def calculate_stop_loss(self, entry_price: float, atr: float, side: PositionSide) -> float:
-        """
-        Calcula stop loss baseado no ATR
-        
-        Args:
-            entry_price: Preço de entrada
-            atr: Valor do ATR
-            side: Lado da posição
-            
-        Returns:
-            Preço do stop loss
-        """
-        sl_distance = atr * self.sl_ratio
-        
-        if side == PositionSide.LONG:
-            return entry_price - sl_distance
-        else:
-            return entry_price + sl_distance
-    
-    def calculate_take_profit(self, entry_price: float, stop_loss: float, side: PositionSide) -> float:
-        """
-        Calcula take profit dinâmico
-        
-        Args:
-            entry_price: Preço de entrada
-            stop_loss: Preço do stop loss
-            side: Lado da posição
-            
-        Returns:
-            Preço do take profit
-        """
-        risk = abs(entry_price - stop_loss)
-        reward_ratio = 2.0  # Risk:Reward 1:2
-        
-        if side == PositionSide.LONG:
-            return entry_price + (risk * reward_ratio)
-        else:
-            return entry_price - (risk * reward_ratio)
-    
-    def execute_entry(self, symbol: str, signal: SignalType, additional_data: Dict) -> bool:
-        """
-        Executa entrada na posição
-        
-        Args:
-            symbol: Símbolo do ativo
-            signal: Tipo de sinal
-            additional_data: Dados adicionais
-            
-        Returns:
-            True se a entrada foi executada com sucesso
-        """
-        try:
-            current_price = additional_data['current_price']
-            atr = additional_data['atr']
-            
-            # Determinar lado da posição
-            side = PositionSide.LONG if signal == SignalType.BUY else PositionSide.SHORT
-            order_side = "Buy" if signal == SignalType.BUY else "Sell"
-            
-            # Calcular parâmetros da posição
-            position_size = self.calculate_position_size(symbol, current_price, atr)
-            stop_loss = self.calculate_stop_loss(current_price, atr, side)
-            take_profit = self.calculate_take_profit(current_price, stop_loss, side)
-            
-            # Executar ordem de mercado
-            order_result = self.client.place_order(
-                symbol=symbol,
-                side=order_side,
-                order_type="Market",
-                qty=str(position_size),
-                stopLoss=str(stop_loss),
-                takeProfit=str(take_profit)
-            )
-            
-            if order_result:
-                # Registrar posição
-                self.positions[symbol] = {
-                    'side': side,
-                    'entry_price': current_price,
-                    'size': position_size,
-                    'stop_loss': stop_loss,
-                    'take_profit': take_profit,
-                    'pyramid_level': 1,
-                    'entry_time': datetime.utcnow()
-                }
-                
-                self.pyramid_levels[symbol] = 1
-                
-                self.logger.info(f"Entrada executada: {symbol} {side.value} @ {current_price}")
-                return True
-            
-            return False
-            
-        except Exception as e:
-            self.logger.error(f"Erro ao executar entrada: {e}")
-            return False
-    
-    def check_exit_conditions(self, symbol: str) -> bool:
-        """
-        Verifica condições de saída
-        
-        Args:
-            symbol: Símbolo do ativo
-            
-        Returns:
-            True se deve sair da posição
-        """
-        if symbol not in self.positions:
-            return False
-        
-        try:
-            # Obter sinais atuais
-            kline_data = self.get_market_data(symbol, self.timeframe)
-            signals = self.indicators.get_signals(kline_data)
-            
-            position = self.positions[symbol]
-            ut_bot_signal = signals.get('ut_bot', 0)
-            
-            # Sair se o UT Bot reverter o sinal
-            if position['side'] == PositionSide.LONG and ut_bot_signal == -1:
-                return True
-            elif position['side'] == PositionSide.SHORT and ut_bot_signal == 1:
-                return True
-            
-            return False
-            
-        except Exception as e:
-            self.logger.error(f"Erro ao verificar condições de saída: {e}")
-            return False
-    
-    def execute_exit(self, symbol: str) -> bool:
-        """
-        Executa saída da posição
-        
-        Args:
-            symbol: Símbolo do ativo
-            
-        Returns:
-            True se a saída foi executada com sucesso
-        """
-        if symbol not in self.positions:
-            return False
-        
-        try:
-            position = self.positions[symbol]
-            
-            # Determinar lado da ordem de fechamento
-            order_side = "Sell" if position['side'] == PositionSide.LONG else "Buy"
-            
-            # Executar ordem de fechamento
-            order_result = self.client.place_order(
-                symbol=symbol,
-                side=order_side,
-                order_type="Market",
-                qty=str(position['size']),
-                reduceOnly=True
-            )
-            
-            if order_result:
-                self.logger.info(f"Saída executada: {symbol} {position['side'].value}")
-                
-                # Remover posição
-                del self.positions[symbol]
-                if symbol in self.pyramid_levels:
-                    del self.pyramid_levels[symbol]
-                
-                return True
-            
-            return False
-            
-        except Exception as e:
-            self.logger.error(f"Erro ao executar saída: {e}")
-            return False
-    
-    def run_cycle(self):
-        """
-        Executa um ciclo completo da estratégia
-        """
-        if not self.is_trading_session():
-            return
-        
-        try:
-            for symbol in self.symbols:
-                # Verificar se já tem posição
-                if symbol in self.positions:
-                    # Verificar condições de saída
-                    if self.check_exit_conditions(symbol):
-                        self.execute_exit(symbol)
-                else:
-                    # Verificar condições de entrada
-                    signal, additional_data = self.check_entry_conditions(symbol)
-                    if signal != SignalType.NONE:
-                        self.execute_entry(symbol, signal, additional_data)
-                
-                # Pequena pausa entre símbolos
-                time.sleep(0.5)
-                
-        except Exception as e:
-            self.logger.error(f"Erro no ciclo da estratégia: {e}")
-    
-    def get_positions_status(self) -> Dict:
-        """
-        Obtém status das posições atuais
-        
-        Returns:
-            Dicionário com status das posições
-        """
-        return self.positions.copy()
-
+"""PPP Vishva Strategy implementation integrated with the trading bot system"""import loggingfrom typing import Dict, List, Any, Optionalfrom datetime import datetime, timedeltaimport pandas as pdimport numpy as npfrom .interfaces import (    TradingStrategy, MarketData, Position, OrderRequest,    OrderSide, OrderType, Order)# Import indicatorsimport sysfrom pathlib import Pathproject_root = Path(__file__).parent.parent.parentsys.path.append(str(project_root))from src.strategy.indicators.base_indicator import BaseIndicatorfrom src.strategy.indicators.atr import ATRfrom src.strategy.indicators.ema import EMA100, EMA20from src.strategy.indicators.ut_bot import UTBotfrom src.strategy.indicators.ewo import EWOfrom src.strategy.indicators.stoch_rsi import StochRSIfrom src.strategy.indicators.heikin_ashi import HeikinAshilogger = logging.getLogger(__name__)class PPPVishvaStrategy(TradingStrategy):    """    PPP Vishva Algorithm Strategy        Advanced multi-indicator strategy with:    - EMA100 trend filter    - UT Bot entry signals (ATR-based)    - EWO momentum confirmation    - Stoch RSI pullback reversal    - Multi-timeframe validation    - Dynamic risk management    """        def __init__(self, config: Dict[str, Any] = None):        """Initialize PPP Vishva strategy"""        self.config = config or {}                # Strategy parameters        self.sl_ratio = self.config.get('sl_ratio', 1.25)        self.max_pyramid_levels = self.config.get('max_pyramid_levels', 5)        self.risk_per_trade = self.config.get('risk_per_trade', 0.02)                # Initialize indicators        self._init_indicators()                # Strategy state        self.positions_state = {}        self.last_signals = {}        self.pyramid_levels = {}                # Risk parameters        self.risk_params = {            "max_position_size": 1000.0,            "max_daily_loss": 100.0,            "max_open_positions": 3,            "stop_loss_pct": 0.03,            "take_profit_pct": 0.06,            "risk_per_trade": self.risk_per_trade        }                logger.info("PPP Vishva strategy initialized")        def _init_indicators(self):        """Initialize all required indicators"""        try:            # EMA100 for trend filter            self.ema100 = EMA100({'period': 100})                        # UT Bot for entry signals            self.ut_bot = UTBot({                'atr_period': 10,                'atr_multiplier': 3.0            })                        # EWO for momentum confirmation            self.ewo = EWO({                'fast_period': 5,                'slow_period': 35            })                        # Stochastic RSI for pullback reversal            self.stoch_rsi = StochRSI({                'rsi_period': 14,                'stoch_period': 14,                'k_period': 3,                'd_period': 3            })                        # Heikin Ashi for multi-timeframe validation            self.heikin_ashi = HeikinAshi({})                        # ATR for risk management            self.atr = ATR({'period': 14})                        logger.info("All indicators initialized successfully")                    except Exception as e:            logger.error(f"Error initializing indicators: {e}")            raise        def _get_mock_kline_data(self, symbol: str, count: int = 200) -> List[List]:        """        Generate mock kline data for testing        In production, this would fetch real data from the exchange        """        import random        from datetime import datetime, timedelta                # Generate mock data        data = []        base_price = 50000.0 if symbol == "BTCUSDT" else 3000.0        current_time = datetime.now()                for i in range(count):            timestamp = int((current_time - timedelta(minutes=count-i)).timestamp() * 1000)                        # Generate OHLCV data with some randomness            open_price = base_price + random.uniform(-1000, 1000)            high_price = open_price + random.uniform(0, 500)            low_price = open_price - random.uniform(0, 500)            close_price = open_price + random.uniform(-200, 200)            volume = random.uniform(100, 1000)                        data.append([timestamp, open_price, high_price, low_price, close_price, volume])            base_price = close_price  # Use close as next open                return data        def _calculate_indicators(self, kline_data: List[List]) -> Dict[str, Any]:        """Calculate all indicators for the given data"""        try:            # Prepare data            df = self.ema100.prepare_data(kline_data)            if df.empty:                return {}                        # Calculate all indicators            indicators = {}                        # EMA100            try:                ema100_values = self.ema100.calculate(df)                indicators['ema100'] = ema100_values.iloc[-1] if not ema100_values.empty else 0                indicators['ema100_trend'] = 1 if df['close'].iloc[-1] > indicators['ema100'] else -1            except Exception as e:                logger.warning(f"EMA100 calculation failed: {e}")                indicators['ema100'] = 0                indicators['ema100_trend'] = 0                        # UT Bot            try:                ut_bot_result = self.ut_bot.calculate(df)                if isinstance(ut_bot_result, pd.DataFrame) and 'ut_signal' in ut_bot_result.columns:                    indicators['ut_bot'] = int(ut_bot_result['ut_signal'].iloc[-1])                else:                    indicators['ut_bot'] = 0            except Exception as e:                logger.warning(f"UT Bot calculation failed: {e}")                indicators['ut_bot'] = 0                        # EWO            try:                ewo_values = self.ewo.calculate(df)                ewo_current = ewo_values.iloc[-1] if not ewo_values.empty else 0                indicators['ewo'] = 1 if ewo_current > 0 else -1 if ewo_current < 0 else 0            except Exception as e:                logger.warning(f"EWO calculation failed: {e}")                indicators['ewo'] = 0                        # Stochastic RSI            try:                stoch_rsi_result = self.stoch_rsi.calculate(df)                if isinstance(stoch_rsi_result, pd.DataFrame):                    k_value = stoch_rsi_result['%K'].iloc[-1] if '%K' in stoch_rsi_result.columns else 50                    indicators['stoch_rsi'] = 1 if k_value < 20 else -1 if k_value > 80 else 0                else:                    indicators['stoch_rsi'] = 0            except Exception as e:                logger.warning(f"Stoch RSI calculation failed: {e}")                indicators['stoch_rsi'] = 0                        # Heikin Ashi            try:                ha_result = self.heikin_ashi.calculate(df)                if isinstance(ha_result, pd.DataFrame) and not ha_result.empty:                    ha_close = ha_result['ha_close'].iloc[-1]                    ha_open = ha_result['ha_open'].iloc[-1]                    indicators['heikin_ashi'] = 1 if ha_close > ha_open else -1                else:                    indicators['heikin_ashi'] = 0            except Exception as e:                logger.warning(f"Heikin Ashi calculation failed: {e}")                indicators['heikin_ashi'] = 0                        # ATR            try:                atr_values = self.atr.calculate(df)                indicators['atr'] = atr_values.iloc[-1] if not atr_values.empty else 0            except Exception as e:                logger.warning(f"ATR calculation failed: {e}")                indicators['atr'] = 0                        return indicators                    except Exception as e:            logger.error(f"Error calculating indicators: {e}")            return {}        def _analyze_trend_filter(self, indicators: Dict[str, Any], current_price: float) -> bool:        """Analyze EMA100 trend filter"""        ema100_trend = indicators.get('ema100_trend', 0)        return ema100_trend != 0  # Accept both up and down trends        def _analyze_entry_signals(self, indicators: Dict[str, Any]) -> int:        """Analyze UT Bot entry signals"""        return indicators.get('ut_bot', 0)        def _analyze_momentum_confirmation(self, indicators: Dict[str, Any]) -> bool:        """Analyze EWO momentum confirmation"""        ewo_signal = indicators.get('ewo', 0)        ut_bot_signal = indicators.get('ut_bot', 0)                # Momentum should align with UT Bot signal        if ut_bot_signal == 1 and ewo_signal >= 0:            return True        elif ut_bot_signal == -1 and ewo_signal <= 0:            return True        else:            return False        def _analyze_pullback_reversal(self, indicators: Dict[str, Any]) -> bool:        """Analyze Stoch RSI pullback reversal"""        stoch_rsi_signal = indicators.get('stoch_rsi', 0)        ut_bot_signal = indicators.get('ut_bot', 0)                # Stoch RSI should confirm UT Bot direction        if ut_bot_signal == 1 and stoch_rsi_signal == 1:            return True        elif ut_bot_signal == -1 and stoch_rsi_signal == -1:            return True        else:            return False        def _analyze_multi_timeframe_validation(self, symbol: str) -> bool:        """        Analyze multi-timeframe validation        For MVP, we'll use a simplified version        """        # In production, this would analyze 4h and daily timeframes        # For now, return True to not block signals        return True        async def analyze(self, market_data: MarketData, positions: List[Position]) -> List[OrderRequest]:        """Analyze market data and return trading signals"""        try:            symbol = market_data.symbol            current_price = market_data.price                        # Get mock kline data (in production, this would come from the market data provider)            kline_data = self._get_mock_kline_data(symbol)                        # Calculate indicators            indicators = self._calculate_indicators(kline_data)            if not indicators:                return []                        # Check for existing position            current_position = None            for pos in positions:                if pos.symbol == symbol:                    current_position = pos                    break                        orders = []                        # Entry logic            if not current_position:                # 1. Check trend filter                if not self._analyze_trend_filter(indicators, current_price):                    return []                                # 2. Check entry signals                entry_signal = self._analyze_entry_signals(indicators)                if entry_signal == 0:                    return []                                # 3. Check momentum confirmation                if not self._analyze_momentum_confirmation(indicators):                    return []                                # 4. Check pullback reversal                if not self._analyze_pullback_reversal(indicators):                    return []                                # 5. Check multi-timeframe validation                if not self._analyze_multi_timeframe_validation(symbol):                    return []                                # All conditions met - create entry order                position_size = self._calculate_position_size(current_price, indicators.get('atr', 0))                                if position_size > 0:                    side = OrderSide.BUY if entry_signal == 1 else OrderSide.SELL                                        order = OrderRequest(                        symbol=symbol,                        side=side,                        order_type=OrderType.MARKET,                        quantity=position_size / current_price                    )                    orders.append(order)                                        self.last_signals[symbol] = {                        'type': 'BUY' if entry_signal == 1 else 'SELL',                        'timestamp': market_data.timestamp,                        'price': current_price,                        'indicators': indicators                    }                                        logger.info(f"PPP Vishva signal for {symbol}: {side.value} at {current_price}")                        # Exit logic            else:                # Check if UT Bot reverses signal                ut_bot_signal = indicators.get('ut_bot', 0)                                should_exit = False                if current_position.size > 0 and ut_bot_signal == -1:  # Long position, sell signal                    should_exit = True                elif current_position.size < 0 and ut_bot_signal == 1:  # Short position, buy signal                    should_exit = True                                if should_exit:                    order = OrderRequest(                        symbol=symbol,                        side=OrderSide.SELL if current_position.size > 0 else OrderSide.BUY,                        order_type=OrderType.MARKET,                        quantity=abs(current_position.size),                        reduce_only=True                    )                    orders.append(order)                    logger.info(f"PPP Vishva exit signal for {symbol} at {current_price}")                        return orders                    except Exception as e:            logger.error(f"Error in PPP Vishva analysis: {e}")            return []        def _calculate_position_size(self, current_price: float, atr: float) -> float:        """Calculate position size based on risk management"""        max_risk_amount = self.risk_params["max_position_size"] * self.risk_params["risk_per_trade"]                if atr > 0:            stop_loss_distance = atr * self.sl_ratio            position_size = max_risk_amount / stop_loss_distance * current_price            return min(position_size, self.risk_params["max_position_size"])                return self.risk_params["max_position_size"] * 0.1  # Fallback to 10% of max        async def on_order_filled(self, order: Order) -> None:        """Handle order fill events"""        logger.info(f"PPP Vishva order filled: {order.symbol} {order.side.value} "                   f"{order.filled_quantity} at {order.avg_price}")        async def on_position_update(self, position: Position) -> None:        """Handle position update events"""        logger.info(f"PPP Vishva position update: {position.symbol} {position.side.value} "                   f"{position.size} at {position.entry_price}, PnL: {position.unrealized_pnl}")        def get_risk_parameters(self) -> Dict[str, Any]:        """Get current risk parameters"""        return self.risk_params.copy()        def update_risk_parameters(self, parameters: Dict[str, Any]) -> None:        """Update risk parameters"""        self.risk_params.update(parameters)        logger.info(f"PPP Vishva risk parameters updated: {parameters}")        def get_strategy_info(self) -> Dict[str, Any]:        """Get strategy information"""        return {            "name": "PPP Vishva Algorithm",            "description": "Advanced multi-indicator strategy with trend filter, momentum confirmation, and multi-timeframe validation",            "indicators": ["EMA100", "UT Bot", "EWO", "Stoch RSI", "Heikin Ashi", "ATR"],            "sl_ratio": self.sl_ratio,            "max_pyramid_levels": self.max_pyramid_levels,            "risk_per_trade": self.risk_per_trade,            "last_signals": self.last_signals        }

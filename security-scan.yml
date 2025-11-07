@@ -1,0 +1,287 @@
+name: Security Scanning
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Executar semanalmente às 3 AM de segunda-feira
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  code-security:
+    name: Code Security Analysis
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install security tools
+        run: |
+          pip install bandit safety
+
+      - name: Run Bandit
+        run: |
+          echo "### 🛡️ Bandit Security Scan" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          bandit -r . -f json -o bandit_report.json || true
+          bandit -r . -f txt > bandit_report.txt || true
+          
+          # Contar issues por severidade
+          HIGH=$(cat bandit_report.json | grep -o '"issue_severity": "HIGH"' | wc -l)
+          MEDIUM=$(cat bandit_report.json | grep -o '"issue_severity": "MEDIUM"' | wc -l)
+          LOW=$(cat bandit_report.json | grep -o '"issue_severity": "LOW"' | wc -l)
+          
+          echo "**Issues Found:**" >> $GITHUB_STEP_SUMMARY
+          echo "- 🔴 High: $HIGH" >> $GITHUB_STEP_SUMMARY
+          echo "- 🟡 Medium: $MEDIUM" >> $GITHUB_STEP_SUMMARY
+          echo "- 🟢 Low: $LOW" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "$HIGH" -gt 0 ]; then
+            echo "❌ High severity issues found!" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          else
+            echo "✅ No high severity issues" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload Bandit report
+        uses: actions/upload-artifact@v3
+        with:
+          name: bandit-report
+          path: |
+            bandit_report.json
+            bandit_report.txt
+
+  dependency-security:
+    name: Dependency Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Safety
+        run: pip install safety
+
+      - name: Run Safety check
+        run: |
+          echo "### 🔒 Safety Dependency Scan" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          safety check --json > safety_report.json || true
+          safety check --full-report > safety_report.txt || true
+          
+          # Contar vulnerabilidades
+          VULN_COUNT=$(cat safety_report.json | grep -o '"vulnerability"' | wc -l)
+          
+          echo "**Vulnerabilities Found:** $VULN_COUNT" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "$VULN_COUNT" -gt 0 ]; then
+            echo "⚠️ Vulnerabilities detected in dependencies" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Review safety_report.txt for details" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ No known vulnerabilities" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload Safety report
+        uses: actions/upload-artifact@v3
+        with:
+          name: safety-report
+          path: |
+            safety_report.json
+            safety_report.txt
+
+  docker-security:
+    name: Docker Image Security Scan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build images for scanning
+        run: |
+          # Build images se Dockerfiles existirem
+          if [ -f "docker/api/Dockerfile" ]; then
+            docker build -f docker/api/Dockerfile -t crypto-trading-api:scan .
+          fi
+          
+          if [ -f "docker/dashboard/Dockerfile" ]; then
+            docker build -f docker/dashboard/Dockerfile -t crypto-trading-dashboard:scan .
+          fi
+          
+          if [ -f "docker/worker/Dockerfile" ]; then
+            docker build -f docker/worker/Dockerfile -t crypto-trading-worker:scan .
+          fi
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'image'
+          image-ref: 'crypto-trading-api:scan'
+          format: 'sarif'
+          output: 'trivy-api-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-api-results.sarif'
+
+      - name: Trivy summary
+        run: |
+          echo "### 🐳 Docker Image Security Scan" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Scan todas as imagens e gerar relatório
+          for image in crypto-trading-api:scan crypto-trading-dashboard:scan crypto-trading-worker:scan; do
+            if docker images | grep -q "${image%:*}"; then
+              echo "#### $image" >> $GITHUB_STEP_SUMMARY
+              
+              trivy image --severity HIGH,CRITICAL --format json "$image" > "trivy-${image%:*}.json" || true
+              
+              CRITICAL=$(cat "trivy-${image%:*}.json" | grep -o '"Severity": "CRITICAL"' | wc -l)
+              HIGH=$(cat "trivy-${image%:*}.json" | grep -o '"Severity": "HIGH"' | wc -l)
+              
+              echo "- 🔴 Critical: $CRITICAL" >> $GITHUB_STEP_SUMMARY
+              echo "- 🟡 High: $HIGH" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+
+      - name: Upload Trivy reports
+        uses: actions/upload-artifact@v3
+        with:
+          name: trivy-reports
+          path: trivy-*.json
+
+  secret-scanning:
+    name: Secret Detection
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: TruffleHog Secret Scan
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+
+      - name: Secret scan summary
+        run: |
+          echo "### 🔐 Secret Detection Scan" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ No secrets detected in code" >> $GITHUB_STEP_SUMMARY
+
+  codeql-analysis:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v2
+        with:
+          languages: python
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v2
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v2
+
+  security-summary:
+    name: Security Summary
+    runs-on: ubuntu-latest
+    needs: [code-security, dependency-security, secret-scanning]
+    if: always()
+    
+    steps:
+      - name: Create security summary
+        run: |
+          echo "## 🛡️ Security Scan Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ needs.code-security.result }}" == "success" ]; then
+            echo "✅ Code Security (Bandit): PASSED" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Code Security (Bandit): FAILED" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ needs.dependency-security.result }}" == "success" ]; then
+            echo "✅ Dependency Security (Safety): PASSED" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ Dependency Security (Safety): WARNINGS" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ needs.secret-scanning.result }}" == "success" ]; then
+            echo "✅ Secret Detection: PASSED" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Secret Detection: FAILED" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          # Status geral
+          if [ "${{ needs.code-security.result }}" == "success" ] && \
+             [ "${{ needs.secret-scanning.result }}" == "success" ]; then
+            echo "### ✅ Security Scans Passed!" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "No critical security issues detected." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### ⚠️ Security Issues Detected" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Please review the security reports and address the issues." >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Notify on critical issues
+        if: needs.code-security.result == 'failure' || needs.secret-scanning.result == 'failure'
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          if [ -n "$SLACK_WEBHOOK" ]; then
+            curl -X POST -H 'Content-type: application/json' \
+              --data "{
+                \"text\": \"🚨 *Critical Security Issues Detected!*\",
+                \"attachments\": [{
+                  \"color\": \"danger\",
+                  \"text\": \"Security scan found critical issues in ${{ github.repository }}. Please review immediately.\"
+                }]
+              }" \
+              "$SLACK_WEBHOOK"
+          fi

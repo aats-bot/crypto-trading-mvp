@@ -5,7 +5,7 @@ import pytest
 import asyncio
 import pandas as pd
 import numpy as np
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from typing import Dict, List, Any
 from unittest.mock import Mock, AsyncMock, MagicMock
 import json
@@ -102,8 +102,8 @@ def sample_client_data():
         "bybit_api_key": "test_api_key",
         "bybit_api_secret": "test_api_secret",
         "is_active": True,
-        "created_at": datetime.utcnow(),
-        "updated_at": datetime.utcnow()
+        "created_at": datetime.now(UTC),
+        "updated_at": datetime.now(UTC)
     }
 
 
@@ -213,7 +213,7 @@ def sample_order_data():
         "orderType": "Market",
         "qty": "0.001",
         "timeInForce": "IOC",
-        "orderLinkId": f"test-order-{datetime.utcnow().timestamp()}"
+        "orderLinkId": f"test-order-{datetime.now(UTC).timestamp()}"
     }
 
 

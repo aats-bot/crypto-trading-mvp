@@ -4,7 +4,7 @@ Testes unitários para o sistema de autenticação
 import pytest
 import jwt
 import bcrypt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC, UTC
 from unittest.mock import Mock, patch, AsyncMock
 import hashlib
 import secrets
@@ -46,7 +46,7 @@ class AuthenticationService:
     
     def generate_jwt_token(self, user_id: str, additional_claims: Dict = None) -> str:
         """Gera token JWT"""
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         payload = {
             "sub": user_id,
             "iat": now,
@@ -61,7 +61,7 @@ class AuthenticationService:
     
     def generate_refresh_token(self, user_id: str) -> str:
         """Gera refresh token"""
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         payload = {
             "sub": user_id,
             "iat": now,
@@ -88,7 +88,7 @@ class AuthenticationService:
             return False
         
         lock_time = self.locked_accounts[user_id]
-        if datetime.utcnow() > lock_time + timedelta(minutes=self.lockout_duration_minutes):
+        if datetime.now(UTC) > lock_time + timedelta(minutes=self.lockout_duration_minutes):
             # Desbloqueio automático
             del self.locked_accounts[user_id]
             if user_id in self.failed_attempts:
@@ -102,10 +102,10 @@ class AuthenticationService:
         if user_id not in self.failed_attempts:
             self.failed_attempts[user_id] = []
         
-        self.failed_attempts[user_id].append(datetime.utcnow())
+        self.failed_attempts[user_id].append(datetime.now(UTC))
         
         # Limpar tentativas antigas (mais de 1 hora)
-        cutoff_time = datetime.utcnow() - timedelta(hours=1)
+        cutoff_time = datetime.now(UTC) - timedelta(hours=1)
         self.failed_attempts[user_id] = [
             attempt for attempt in self.failed_attempts[user_id] 
             if attempt > cutoff_time
@@ -113,7 +113,7 @@ class AuthenticationService:
         
         # Bloquear conta se muitas tentativas
         if len(self.failed_attempts[user_id]) >= self.max_login_attempts:
-            self.locked_accounts[user_id] = datetime.utcnow()
+            self.locked_accounts[user_id] = datetime.now(UTC)
     
     def clear_failed_attempts(self, user_id: str) -> None:
         """Limpa tentativas falhadas após login bem-sucedido"""
@@ -124,7 +124,7 @@ class AuthenticationService:
     
     def check_rate_limit(self, identifier: str, max_requests: int = 10, window_minutes: int = 1) -> bool:
         """Verifica rate limiting"""
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         window_start = now - timedelta(minutes=window_minutes)
         
         if identifier not in self.rate_limit_storage:
@@ -153,7 +153,7 @@ class User:
         self.email = email
         self.password_hash = password_hash
         self.is_active = is_active
-        self.created_at = datetime.utcnow()
+        self.created_at = datetime.now(UTC)
         self.last_login = None
         self.login_count = 0
 
@@ -296,8 +296,8 @@ class TestAuthenticationService:
         assert "jti" in payload  # Unique token ID
         
         # Refresh token deve ter expiração mais longa
-        exp_time = datetime.fromtimestamp(payload["exp"])
-        now = datetime.utcnow()
+        exp_time = datetime.fromtimestamp(payload['exp'], UTC)
+        now = datetime.now(UTC)
         time_diff = exp_time - now
         assert time_diff.days >= 6  # Pelo menos 6 dias
     
@@ -326,7 +326,7 @@ class TestAuthenticationService:
         assert auth_service.is_account_locked(user_id)
         
         # Simular passagem do tempo alterando o timestamp de bloqueio
-        past_time = datetime.utcnow() - timedelta(minutes=auth_service.lockout_duration_minutes + 1)
+        past_time = datetime.now(UTC) - timedelta(minutes=auth_service.lockout_duration_minutes + 1)
         auth_service.locked_accounts[user_id] = past_time
         
         # Agora não deve estar mais bloqueada
@@ -388,7 +388,7 @@ class TestAuthenticationService:
         user_id = "test-user-123"
         
         # Simular tentativas antigas
-        old_time = datetime.utcnow() - timedelta(hours=2)
+        old_time = datetime.now(UTC) - timedelta(hours=2)
         auth_service.failed_attempts[user_id] = [old_time, old_time, old_time]
         
         # Registrar nova tentativa (deve limpar as antigas)
