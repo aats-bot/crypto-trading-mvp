@@ -1,0 +1,3 @@
+﻿# Troubleshooting
+
+*Documentacao em desenvolvimento*

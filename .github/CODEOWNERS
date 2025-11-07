@@ -1,0 +1,5 @@
+﻿# CODEOWNERS
+* @lucas
+/.github/workflows/ @lucas
+/docker/ @lucas
+/scripts/ @lucas

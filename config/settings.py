@@ -1,31 +1,31 @@
-# config/settings.py
 from __future__ import annotations
+import os
+from pathlib import Path
 
 try:
-    # Pydantic v2
+    # Pydantic v2: BaseSettings foi movido para pydantic-settings
     from pydantic_settings import BaseSettings, SettingsConfigDict
-    _V2 = True
-except Exception:  # fallback p/ v1 se alguém trocar a versão
+except Exception:  # fallback raro
     from pydantic import BaseSettings  # type: ignore
-    SettingsConfigDict = None  # type: ignore
-    _V2 = False
+    class SettingsConfigDict(dict):  # compat ínfima
+        pass
 
+# Raiz do projeto (para montar caminhos relativos)
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_DB_PATH = PROJECT_ROOT / "test.db"
 
 class Settings(BaseSettings):
-    """
-    Centraliza variáveis de ambiente. Mantemos 'extra=allow' para não quebrar
-    caso existam novas chaves no .env que o modelo não declare.
-    Adicione aqui os campos que o projeto usar explicitamente, ex.:
-      bybit_api_key: str | None = None
-      bybit_api_secret: str | None = None
-      database_url: str | None = None
-    """
-    if _V2:
-        model_config = SettingsConfigDict(env_file=".env", extra="allow")
-    else:  # pydantic v1
-        class Config:
-            env_file = ".env"
-            extra = "allow"
+    # Defaults seguros para testes:
+    database_url: str = f"sqlite+aiosqlite:///{DEFAULT_DB_PATH.as_posix()}"
+    database_url_sync: str = f"sqlite:///{DEFAULT_DB_PATH.as_posix()}"
+    debug: bool = False
 
+    # Pydantic Settings config
+    model_config = SettingsConfigDict(
+        env_file=str(PROJECT_ROOT / ".env"),
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
+# Instância global
 settings = Settings()
