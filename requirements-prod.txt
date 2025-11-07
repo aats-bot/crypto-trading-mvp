@@ -26,3 +26,8 @@ python-jose[cryptography]==3.3.0
 # Performance
 orjson==3.9.10
 prometheus-client>=0.20,<1
+
+# =========================
+# Exchange Integration
+# =========================
+pybit>=5.4.0
