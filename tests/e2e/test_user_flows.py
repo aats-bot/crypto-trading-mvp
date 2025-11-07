@@ -230,6 +230,10 @@ class TradingSystem:
     
     async def execute_trade(self, user_id, symbol, side, quantity, strategy_id=None):
         """Executar trade"""
+        # Usar strategy_id padrão se não fornecido
+        if strategy_id is None:
+            strategy_id = 1  # ID padrão para testes
+        
         # Obter dados de mercado atuais
         market_data = await self.api.get_market_data(symbol)
         
