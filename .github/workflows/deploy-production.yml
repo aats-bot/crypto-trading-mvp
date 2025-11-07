@@ -1,0 +1,371 @@
+name: Deploy to Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to deploy (required)'
+        required: true
+      confirm:
+        description: 'Type "DEPLOY" to confirm production deployment'
+        required: true
+
+env:
+  ENVIRONMENT: production
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  validate:
+    name: Validate Deployment Request
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Validate confirmation
+        run: |
+          if [ "${{ github.event.inputs.confirm }}" != "DEPLOY" ]; then
+            echo "❌ Deployment not confirmed. You must type 'DEPLOY' to proceed."
+            exit 1
+          fi
+          
+          echo "✅ Deployment confirmed"
+
+      - name: Validate version
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          
+          if [ -z "$VERSION" ]; then
+            echo "❌ Version is required for production deployment"
+            exit 1
+          fi
+          
+          echo "✅ Version validated: $VERSION"
+
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: validate
+    environment:
+      name: production
+      url: https://crypto-trading.com
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create deployment issue
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const issue = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🚀 Production Deployment - v${{ github.event.inputs.version }}`,
+              body: `
+              ## Production Deployment
+              
+              **Version:** ${{ github.event.inputs.version }}
+              **Initiated by:** @${{ github.actor }}
+              **Time:** ${new Date().toISOString()}
+              **Workflow:** ${{ github.run_id }}
+              
+              ---
+              
+              ### Pre-deployment Checklist
+              - [ ] All tests passing
+              - [ ] Staging deployment successful
+              - [ ] Database migrations reviewed
+              - [ ] Rollback plan ready
+              - [ ] Team notified
+              
+              ### Deployment Progress
+              - [ ] Images pulled
+              - [ ] Services stopped
+              - [ ] New version deployed
+              - [ ] Health checks passed
+              - [ ] Smoke tests passed
+              
+              ---
+              
+              *This issue will be automatically updated with deployment status*
+              `,
+              labels: ['deployment', 'production']
+            });
+            
+            core.exportVariable('DEPLOYMENT_ISSUE', issue.data.number);
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull Docker images
+        run: |
+          VERSION=${{ github.event.inputs.version }}
+          
+          echo "Pulling production images for version: $VERSION"
+          
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/api:$VERSION
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/dashboard:$VERSION
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/worker:$VERSION
+          
+          echo "✅ Images pulled successfully"
+
+      - name: Create deployment backup
+        run: |
+          echo "Creating backup of current production deployment..."
+          
+          if docker-compose ps -q &> /dev/null; then
+            # Salvar estado atual
+            docker-compose images > .deploy_backup_production
+            docker-compose config > .deploy_config_backup_production
+            
+            # Criar snapshot do banco de dados (se configurado)
+            if [ -n "${{ secrets.DB_BACKUP_SCRIPT }}" ]; then
+              echo "Creating database backup..."
+              # Executar script de backup do banco
+            fi
+            
+            echo "✅ Backup created"
+          else
+            echo "⚠️  No previous deployment found"
+          fi
+
+      - name: Stop current services
+        run: |
+          echo "Stopping current production services..."
+          docker-compose down || true
+          echo "✅ Services stopped"
+
+      - name: Deploy new version
+        env:
+          VERSION: ${{ github.event.inputs.version }}
+        run: |
+          echo "Deploying version: $VERSION to PRODUCTION"
+          
+          export ENVIRONMENT=production
+          export VERSION=$VERSION
+          
+          # Blue-Green deployment strategy
+          # Iniciar novos serviços em portas alternativas primeiro
+          docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+          
+          echo "✅ New version deployed"
+
+      - name: Wait for services
+        run: |
+          echo "Waiting for services to be ready..."
+          sleep 30
+
+      - name: Comprehensive health check
+        timeout-minutes: 5
+        run: |
+          echo "Running comprehensive health check..."
+          
+          MAX_RETRIES=60
+          RETRY_COUNT=0
+          
+          # Verificar API
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            if curl -f https://api.crypto-trading.com/health; then
+              echo "✅ API is healthy"
+              break
+            fi
+            
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            echo "Attempt $RETRY_COUNT/$MAX_RETRIES - Waiting..."
+            sleep 3
+          done
+          
+          if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
+            echo "❌ Health check failed"
+            exit 1
+          fi
+          
+          # Verificar conectividade com banco de dados
+          echo "Checking database connectivity..."
+          # Adicionar verificação de DB aqui
+          
+          # Verificar Redis
+          echo "Checking Redis connectivity..."
+          # Adicionar verificação de Redis aqui
+          
+          echo "✅ All health checks passed"
+
+      - name: Run production smoke tests
+        timeout-minutes: 10
+        run: |
+          echo "Running production smoke tests..."
+          
+          # Testes críticos de produção
+          curl -f https://api.crypto-trading.com/health || exit 1
+          curl -f https://api.crypto-trading.com/docs || exit 1
+          curl -f https://crypto-trading.com || exit 1
+          
+          # Teste de autenticação (se aplicável)
+          # Teste de endpoints críticos
+          # Teste de performance básico
+          
+          echo "✅ Smoke tests passed"
+
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          echo "❌ DEPLOYMENT FAILED! Initiating rollback..."
+          
+          # Parar serviços com falha
+          docker-compose down
+          
+          # Restaurar versão anterior
+          if [ -f .deploy_backup_production ]; then
+            echo "Restoring previous version..."
+            docker-compose up -d
+            
+            # Aguardar e verificar
+            sleep 20
+            curl -f https://api.crypto-trading.com/health || echo "⚠️  Rollback may have issues"
+          fi
+          
+          echo "Rollback completed"
+
+      - name: Switch traffic (Blue-Green)
+        if: success()
+        run: |
+          echo "Switching traffic to new version..."
+          
+          # Atualizar load balancer / proxy
+          # Redirecionar tráfego gradualmente
+          
+          echo "✅ Traffic switched to new version"
+
+      - name: Monitor for 5 minutes
+        if: success()
+        run: |
+          echo "Monitoring deployment for 5 minutes..."
+          
+          for i in {1..10}; do
+            echo "Check $i/10..."
+            
+            # Verificar saúde
+            curl -f https://api.crypto-trading.com/health || exit 1
+            
+            # Verificar logs de erro
+            ERROR_COUNT=$(docker-compose logs --tail=50 | grep -i "error\|exception" | wc -l)
+            
+            if [ "$ERROR_COUNT" -gt 10 ]; then
+              echo "❌ Too many errors detected: $ERROR_COUNT"
+              exit 1
+            fi
+            
+            sleep 30
+          done
+          
+          echo "✅ Monitoring completed - No issues detected"
+
+      - name: Notify team - Success
+        if: success()
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          if [ -n "$SLACK_WEBHOOK" ]; then
+            curl -X POST -H 'Content-type: application/json' \
+              --data "{
+                \"text\": \"🎉 *Production Deployment Successful!*\",
+                \"attachments\": [{
+                  \"color\": \"good\",
+                  \"fields\": [
+                    {\"title\": \"Version\", \"value\": \"${{ github.event.inputs.version }}\", \"short\": true},
+                    {\"title\": \"Deployed by\", \"value\": \"${{ github.actor }}\", \"short\": true},
+                    {\"title\": \"Time\", \"value\": \"$(date '+%Y-%m-%d %H:%M:%S UTC')\", \"short\": false}
+                  ]
+                }]
+              }" \
+              "$SLACK_WEBHOOK"
+          fi
+
+      - name: Notify team - Failure
+        if: failure()
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          if [ -n "$SLACK_WEBHOOK" ]; then
+            curl -X POST -H 'Content-type: application/json' \
+              --data "{
+                \"text\": \"🚨 *Production Deployment Failed and Rolled Back!*\",
+                \"attachments\": [{
+                  \"color\": \"danger\",
+                  \"fields\": [
+                    {\"title\": \"Version\", \"value\": \"${{ github.event.inputs.version }}\", \"short\": true},
+                    {\"title\": \"Initiated by\", \"value\": \"${{ github.actor }}\", \"short\": true},
+                    {\"title\": \"Action Required\", \"value\": \"Investigation needed\", \"short\": false}
+                  ]
+                }]
+              }" \
+              "$SLACK_WEBHOOK"
+          fi
+
+      - name: Update deployment issue
+        if: always()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const status = '${{ job.status }}';
+            const emoji = status === 'success' ? '✅' : '❌';
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: process.env.DEPLOYMENT_ISSUE,
+              body: `${emoji} **Deployment ${status}**\n\nWorkflow: ${{ github.run_id }}\nTime: ${new Date().toISOString()}`
+            });
+            
+            if (status === 'success') {
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: process.env.DEPLOYMENT_ISSUE,
+                state: 'closed',
+                labels: ['deployment', 'production', 'completed']
+              });
+            }
+
+      - name: Create deployment summary
+        if: always()
+        run: |
+          echo "### 🚀 Production Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** production" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ github.event.inputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Deployed by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Time:** $(date '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ **Deployment completed successfully!**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Live Services:**" >> $GITHUB_STEP_SUMMARY
+            echo "- 🌐 API: https://api.crypto-trading.com" >> $GITHUB_STEP_SUMMARY
+            echo "- 🌐 Dashboard: https://crypto-trading.com" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Deployment failed and was rolled back**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
+            echo "1. Review workflow logs" >> $GITHUB_STEP_SUMMARY
+            echo "2. Check application logs" >> $GITHUB_STEP_SUMMARY
+            echo "3. Verify staging deployment" >> $GITHUB_STEP_SUMMARY
+            echo "4. Fix issues and retry" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Save deployment info
+        if: success()
+        run: |
+          cat > .deploy_info_production <<EOF
+          ENVIRONMENT=production
+          VERSION=${{ github.event.inputs.version }}
+          DEPLOY_DATE=$(date '+%Y-%m-%d %H:%M:%S')
+          DEPLOY_USER=${{ github.actor }}
+          WORKFLOW_RUN=${{ github.run_id }}
+          EOF

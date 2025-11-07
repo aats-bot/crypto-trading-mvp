@@ -1,0 +1,219 @@
+name: Deploy to Staging
+
+on:
+  push:
+    branches:
+      - develop
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to deploy (leave empty for latest)'
+        required: false
+        default: 'latest'
+
+env:
+  ENVIRONMENT: staging
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  deploy:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: https://staging.crypto-trading.com
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set version
+        id: version
+        run: |
+          if [ "${{ github.event.inputs.version }}" != "" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${{ github.sha }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull Docker images
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          
+          echo "Pulling images for version: $VERSION"
+          
+          # Pull images (ou use imagens locais se não existirem no registry)
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/api:$VERSION || \
+            docker build -f docker/api/Dockerfile -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/api:$VERSION .
+          
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/dashboard:$VERSION || \
+            docker build -f docker/dashboard/Dockerfile -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/dashboard:$VERSION .
+          
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/worker:$VERSION || \
+            docker build -f docker/worker/Dockerfile -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/worker:$VERSION .
+
+      - name: Create deployment backup
+        run: |
+          echo "Creating backup of current deployment..."
+          
+          # Salvar informações da versão atual
+          if docker-compose ps -q &> /dev/null; then
+            docker-compose images > .deploy_backup_staging
+            echo "Backup created"
+          else
+            echo "No previous deployment found"
+          fi
+
+      - name: Stop current services
+        run: |
+          echo "Stopping current services..."
+          docker-compose down || true
+
+      - name: Deploy new version
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          echo "Deploying version: $VERSION"
+          
+          # Configurar variáveis de ambiente
+          export ENVIRONMENT=staging
+          export VERSION=$VERSION
+          
+          # Iniciar serviços
+          docker-compose up -d
+          
+          echo "Services started"
+
+      - name: Wait for services
+        run: |
+          echo "Waiting for services to be ready..."
+          sleep 15
+
+      - name: Health check
+        run: |
+          echo "Running health check..."
+          
+          # Verificar API
+          MAX_RETRIES=30
+          RETRY_COUNT=0
+          
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            if curl -f http://localhost:8000/health; then
+              echo "✅ API is healthy"
+              break
+            fi
+            
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            echo "Attempt $RETRY_COUNT/$MAX_RETRIES - Waiting..."
+            sleep 2
+          done
+          
+          if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
+            echo "❌ Health check failed"
+            exit 1
+          fi
+
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          echo "Deployment failed! Rolling back..."
+          
+          # Parar serviços com falha
+          docker-compose down
+          
+          # Restaurar versão anterior (se existir backup)
+          if [ -f .deploy_backup_staging ]; then
+            echo "Restoring previous version..."
+            docker-compose up -d
+          fi
+          
+          echo "Rollback completed"
+
+      - name: Run smoke tests
+        run: |
+          echo "Running smoke tests..."
+          
+          # Teste básico da API
+          curl -f http://localhost:8000/health || exit 1
+          curl -f http://localhost:8000/docs || exit 1
+          
+          # Teste básico do Dashboard
+          curl -f http://localhost:3000 || exit 1
+          
+          echo "✅ Smoke tests passed"
+
+      - name: Notify Slack
+        if: always()
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          if [ -n "$SLACK_WEBHOOK" ]; then
+            STATUS="${{ job.status }}"
+            
+            if [ "$STATUS" == "success" ]; then
+              COLOR="good"
+              EMOJI="✅"
+            else
+              COLOR="danger"
+              EMOJI="❌"
+            fi
+            
+            curl -X POST -H 'Content-type: application/json' \
+              --data "{
+                \"attachments\": [{
+                  \"color\": \"$COLOR\",
+                  \"title\": \"$EMOJI Deployment to Staging $STATUS\",
+                  \"fields\": [
+                    {\"title\": \"Environment\", \"value\": \"staging\", \"short\": true},
+                    {\"title\": \"Version\", \"value\": \"${{ steps.version.outputs.version }}\", \"short\": true},
+                    {\"title\": \"Commit\", \"value\": \"${{ github.sha }}\", \"short\": true},
+                    {\"title\": \"Author\", \"value\": \"${{ github.actor }}\", \"short\": true}
+                  ]
+                }]
+              }" \
+              "$SLACK_WEBHOOK" || true
+          fi
+
+      - name: Create deployment summary
+        if: always()
+        run: |
+          echo "### 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** staging" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Deployed by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Time:** $(date '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ Deployment completed successfully!" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Services:**" >> $GITHUB_STEP_SUMMARY
+            echo "- 🌐 API: https://staging-api.crypto-trading.com" >> $GITHUB_STEP_SUMMARY
+            echo "- 🌐 Dashboard: https://staging.crypto-trading.com" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Deployment failed and was rolled back" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Save deployment info
+        if: success()
+        run: |
+          cat > .deploy_info_staging <<EOF
+          ENVIRONMENT=staging
+          VERSION=${{ steps.version.outputs.version }}
+          DEPLOY_DATE=$(date '+%Y-%m-%d %H:%M:%S')
+          DEPLOY_USER=${{ github.actor }}
+          COMMIT_SHA=${{ github.sha }}
+          WORKFLOW_RUN=${{ github.run_id }}
+          EOF
+          
+          echo "Deployment info saved"
