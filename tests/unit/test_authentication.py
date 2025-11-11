@@ -4,7 +4,7 @@ Testes unitários para o sistema de autenticação
 import pytest
 import jwt
 import bcrypt
-from datetime import datetime, timedelta, UTC, UTC
+from datetime import datetime, timedelta, UTC
 from unittest.mock import Mock, patch, AsyncMock
 import hashlib
 import secrets
